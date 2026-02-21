@@ -102,18 +102,26 @@ export default function InvitesPage() {
 
   const deleteInvite = async (id: string) => {
     if (!firestore) return;
+    console.log("INVITE_DELETE_CLICKED", id);
     const docRef = doc(firestore, "invites", id);
     deleteDoc(docRef).then(() => {
       toast({ title: "Invite Deleted" });
+    }).catch(err => {
+      toast({ title: "Delete Failed", description: err.code, variant: "destructive" });
     });
   }
 
   const wipeMemberData = async (memberUid: string, inviteCode: string) => {
     if (!firestore || isWiping) return;
-    if (!confirm("CRITICAL ACTION: This will delete the user profile AND all their trade ideas. Continue?")) return;
+    
+    // Observability Log
+    console.log("WIPE_MEMBER_DATA_START", { memberUid, inviteCode });
 
     setIsWiping(memberUid);
-    toast({ title: "Wiping Member Data...", description: "Removing user and all associated research notes." });
+    toast({ 
+      title: "Initiating Global Wipe...", 
+      description: "Removing profile and all research notes from terminal." 
+    });
 
     try {
       const batch = writeBatch(firestore);
@@ -126,15 +134,25 @@ export default function InvitesPage() {
       const q = query(ideasRef, where("userId", "==", memberUid));
       const ideasSnap = await getDocs(q);
       
+      console.log(`Found ${ideasSnap.size} research notes to wipe for ${memberUid}`);
+      
       ideasSnap.forEach((ideaDoc) => {
         batch.delete(doc(firestore, "tradeIdeas", ideaDoc.id));
       });
 
       await batch.commit();
-      toast({ title: "Wipe Complete", description: `User ${memberUid} and ${ideasSnap.size} posts removed.` });
+      console.log("WIPE_SUCCESS", { memberUid });
+      toast({ 
+        title: "Wipe Complete", 
+        description: `Member and ${ideasSnap.size} research notes have been purged.` 
+      });
     } catch (err: any) {
       console.error("WIPE_FAILED", err);
-      toast({ title: "Wipe Failed", description: err.message, variant: "destructive" });
+      toast({ 
+        title: "Wipe Failed", 
+        description: err.code || "Permission Denied", 
+        variant: "destructive" 
+      });
     } finally {
       setIsWiping(null);
     }

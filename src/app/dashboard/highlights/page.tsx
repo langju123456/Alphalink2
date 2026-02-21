@@ -86,11 +86,13 @@ export default function HighlightsPage() {
 
   const handleDelete = (id: string) => {
     if (!firestore) return
-    if (!confirm("Are you sure you want to remove this highlight?")) return
-
+    
+    // Observability Log
+    console.log("HIGHLIGHT_DELETE_CLICKED", id);
+    
+    toast({ title: "Deleting highlight..." });
     const docRef = doc(firestore, "highlights", id)
     deleteDocumentNonBlocking(docRef)
-    toast({ title: t.common.success, description: "Highlight removed." })
   }
 
   return (
