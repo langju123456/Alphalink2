@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -47,6 +46,7 @@ export default function LandingPage() {
   const { auth, firestore } = useFirebase()
   const { user, isUserLoading } = useUser()
 
+  // Task D: Persistent Check for User Entity
   useEffect(() => {
     async function checkExistingProfile() {
       if (!isUserLoading && user && firestore) {
@@ -87,7 +87,7 @@ export default function LandingPage() {
         }
       }
 
-      // Step 3: Handle authorization
+      // Step 3: Handle authorization & Task C/D: User Entity Binding
       if (role) {
         setAssignedRole(role)
         
@@ -95,17 +95,19 @@ export default function LandingPage() {
         const userDoc = await getDoc(userDocRef)
 
         if (role === 'admin') {
-          // ADMIN BYPASS: Create profile automatically and enter
-          await setDoc(userDocRef, {
-            uid: userId,
-            role: 'admin',
-            displayName: 'System Administrator',
-            contactType: 'email',
-            contactInfo: 'admin@alphalink.terminal',
-            accessCode: finalCode,
-            updatedAt: serverTimestamp(),
-            createdAt: serverTimestamp()
-          }, { merge: true })
+          // ADMIN BYPASS: Create profile automatically if missing
+          if (!userDoc.exists() || !userDoc.data().displayName) {
+            await setDoc(userDocRef, {
+              uid: userId,
+              role: 'admin',
+              displayName: 'System Administrator',
+              contactType: 'email',
+              contactInfo: 'admin@alphalink.terminal',
+              accessCode: finalCode,
+              updatedAt: serverTimestamp(),
+              createdAt: serverTimestamp()
+            }, { merge: true })
+          }
           
           toast({ title: "Admin Access Granted", description: "Initializing secure terminal..." })
           router.push("/dashboard/feed")
@@ -114,7 +116,7 @@ export default function LandingPage() {
           toast({ title: "Access Granted", description: `Welcome back to the terminal.` })
           router.push("/dashboard/feed")
         } else {
-          // New member with valid code -> show registration
+          // New member with valid code -> show registration (Task D)
           setStep('profile')
           toast({ title: "Code Verified", description: "Please complete your member profile to continue." })
         }
@@ -138,6 +140,7 @@ export default function LandingPage() {
 
     try {
       const userId = auth.currentUser.uid
+      // Task D: Save fullName + contact to users/{uid}
       await setDoc(doc(firestore, "users", userId), {
         uid: userId,
         role: assignedRole,

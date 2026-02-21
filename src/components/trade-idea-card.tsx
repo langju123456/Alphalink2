@@ -1,4 +1,3 @@
-
 "use client"
 
 import { TradeIdea } from "@/lib/types"
@@ -12,7 +11,8 @@ import {
   AlertTriangle,
   Lightbulb,
   Heart,
-  Trash2
+  Trash2,
+  Loader2
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "./ui/button"
@@ -27,7 +27,9 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const { user } = useUser()
   const { firestore } = useFirebase()
   const { toast } = useToast()
+  
   const [likes, setLikes] = useState(idea.likeCount || 0)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [mounted, setMounted] = useState(false)
   
   const userDocRef = useMemoFirebase(() => {
@@ -57,28 +59,45 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const canManage = isOwner || isAdmin
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to remove this research note?")) return
+    if (isDeleting) return
+    if (!confirm("Confirm Deletion: This research note will be permanently removed from the terminal feed.")) return
+    
     if (!firestore) return
+    setIsDeleting(true)
 
+    const docPath = `tradeIdeas/${idea.id}`
     const docRef = doc(firestore, "tradeIdeas", idea.id)
     
-    // Explicit deletion with logging and context
+    console.log(`[TERMINAL] Initiating deletion for: ${docPath}`)
+
     deleteDoc(docRef)
       .then(() => {
-        toast({ title: "DELETE SUCCESS", description: "Research note removed from terminal." })
+        toast({ 
+          title: "DELETE SUCCESS", 
+          description: `Note ID ${idea.id.substring(0, 8)} removed successfully.` 
+        })
       })
       .catch(async (err) => {
-        console.error("DELETE FAILED:", err.code || err.message)
+        console.error(`[TERMINAL] Delete failed for ${docPath}:`, err.code || err.message)
+        
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
           operation: 'delete',
         })
+        
+        // Emit for the global listener (Developer overlay)
         errorEmitter.emit('permission-error', permissionError)
+        
         toast({ 
           title: "DELETE FAILED", 
-          description: err.code === 'permission-denied' ? "Access Denied: Admin or Owner only." : "Action could not be completed.",
+          description: err.code === 'permission-denied' 
+            ? "Access Denied: Only Admin or the Original Author can delete this." 
+            : "Operation could not be completed.",
           variant: "destructive" 
         })
+      })
+      .finally(() => {
+        setIsDeleting(false)
       })
   }
 
@@ -235,9 +254,10 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
                   variant="ghost" 
                   size="sm" 
                   onClick={handleDelete}
+                  disabled={isDeleting}
                   className="text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 gap-2"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                   <span className="text-xs font-bold">Delete</span>
                 </Button>
               </div>

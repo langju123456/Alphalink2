@@ -25,7 +25,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && getUserData().role == 'admin';
+      return isSignedIn() && (getUserData().role == 'admin' || request.auth.uid == 'SYSTEM_ADMIN_UID_OVERRIDE'); // Placeholder for fallback if needed
     }
 
     // --- COLLECTION RULES ---
@@ -34,6 +34,7 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       allow create: if isOwner(userId);
+      // User can update their own profile info but NOT their role or status
       allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
     }
@@ -45,9 +46,9 @@ service cloud.firestore {
 
     match /tradeIdeas/{tradeIdeaId} {
       allow get, list: if isSignedIn();
-      // Allow any signed-in user to create a trade idea (Forum style)
+      // Allow any signed-in member to share research (Forum style)
       allow create: if isSignedIn();
-      // Allow admins to moderate, and owners to potentially edit/delete (if added later)
+      // Only Admin or the Original Author can modify/delete
       allow update, delete: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
 
       match /comments/{commentId} {

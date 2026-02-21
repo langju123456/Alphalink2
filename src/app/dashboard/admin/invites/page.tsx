@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -38,6 +37,7 @@ export default function InvitesPage() {
   const [editLabelValue, setEditLabelValue] = useState("")
   const [editRecipientValue, setEditRecipientValue] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
 
   const userDocRef = useMemoFirebase(() => {
     if (!user || !firestore) return null
@@ -113,12 +113,14 @@ export default function InvitesPage() {
 
   const deleteInvite = async (id: string) => {
     if (!confirm(t.invites.confirmDelete)) return
-    if (!firestore) return
+    if (!firestore || isDeletingId) return
 
+    setIsDeletingId(id)
     const docRef = doc(firestore, "invites", id)
+    
     deleteDoc(docRef)
       .then(() => {
-        toast({ title: "DELETE SUCCESS", description: "Invite permanently removed." })
+        toast({ title: "DELETE SUCCESS", description: "Invite permanently removed from database." })
       })
       .catch(async (err) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -126,6 +128,9 @@ export default function InvitesPage() {
           operation: 'delete',
         }))
         toast({ title: "DELETE FAILED", description: "Permission denied or resource missing.", variant: "destructive" })
+      })
+      .finally(() => {
+        setIsDeletingId(null)
       })
   }
 
@@ -283,8 +288,8 @@ export default function InvitesPage() {
                         <Button size="sm" variant="ghost" onClick={() => toggleInvite(inv.id, inv.status)} className="text-[10px] uppercase">
                           {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => deleteInvite(inv.id)} className="text-rose-500 hover:bg-rose-500/10">
-                          <Trash2 className="w-4 h-4" />
+                        <Button size="sm" variant="ghost" onClick={() => deleteInvite(inv.id)} disabled={isDeletingId === inv.id} className="text-rose-500 hover:bg-rose-500/10">
+                          {isDeletingId === inv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </Button>
                       </div>
                     </td>
