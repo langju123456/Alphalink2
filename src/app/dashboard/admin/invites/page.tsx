@@ -7,7 +7,7 @@ import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/
 import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon } from "lucide-react"
+import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon, Tag } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
 import {
@@ -124,6 +124,12 @@ export default function InvitesPage() {
     }
   }
 
+  const openEditDialog = (inv: any) => {
+    setEditingInvite(inv)
+    setEditLabelValue(inv.label || "")
+    setEditRecipientValue(inv.recipient || "")
+  }
+
   const saveEdit = async () => {
     if (!editingInvite || !firestore) return
     setIsUpdating(true)
@@ -133,9 +139,9 @@ export default function InvitesPage() {
         recipient: editRecipientValue.trim() || "Unknown"
       })
       setEditingInvite(null)
-      toast({ title: "Updated" })
+      toast({ title: t.common.success })
     } catch (err: any) {
-      toast({ title: "Error", variant: "destructive" })
+      toast({ title: "Error updating", variant: "destructive" })
     } finally {
       setIsUpdating(false)
     }
@@ -155,18 +161,24 @@ export default function InvitesPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch gap-3">
-          <Input 
-            placeholder={t.invites.recipientPlaceholder}
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            className="h-11 bg-card border-border w-full sm:w-48"
-          />
-          <Input 
-            placeholder={t.invites.labelPlaceholder}
-            value={inviteLabel}
-            onChange={(e) => setInviteLabel(e.target.value)}
-            className="h-11 bg-card border-border w-full sm:w-48"
-          />
+          <div className="relative w-full sm:w-48">
+             <UserIcon className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+             <Input 
+              placeholder={t.invites.recipientPlaceholder}
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              className="h-11 bg-card border-border pl-10"
+            />
+          </div>
+          <div className="relative w-full sm:w-48">
+             <Tag className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+             <Input 
+              placeholder={t.invites.labelPlaceholder}
+              value={inviteLabel}
+              onChange={(e) => setInviteLabel(e.target.value)}
+              className="h-11 bg-card border-border pl-10"
+            />
+          </div>
           <Button onClick={generateInvite} disabled={isGenerating} className="bg-primary font-bold h-11">
             {isGenerating ? <Loader2 className="animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
             {t.invites.generateBtn}
@@ -205,7 +217,7 @@ export default function InvitesPage() {
               {isInvitesLoading ? (
                 <tr><td colSpan={5} className="p-10 text-center italic">Loading terminal data...</td></tr>
               ) : invites?.map((inv: any) => (
-                <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
+                <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors group">
                   <td className="p-4 font-code font-bold text-foreground">{inv.code}</td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
@@ -215,14 +227,8 @@ export default function InvitesPage() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
+                      <Tag className="w-3 h-3 text-muted-foreground" />
                       <span className="text-xs">{inv.label}</span>
-                      <button onClick={() => { 
-                        setEditingInvite(inv); 
-                        setEditLabelValue(inv.label); 
-                        setEditRecipientValue(inv.recipient || "");
-                      }} className="text-muted-foreground hover:text-primary transition-colors">
-                        <Edit2 className="w-3 h-3" />
-                      </button>
                     </div>
                   </td>
                   <td className="p-4">
@@ -232,6 +238,9 @@ export default function InvitesPage() {
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => openEditDialog(inv)} className="text-muted-foreground hover:text-primary">
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => toggleInvite(inv.id, inv.status)} className="text-[10px] uppercase">
                         {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
                       </Button>
@@ -251,19 +260,27 @@ export default function InvitesPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.invites.recipient}</label>
-              <Input 
-                value={editRecipientValue} 
-                onChange={(e) => setEditRecipientValue(e.target.value)} 
-                placeholder={t.invites.recipientPlaceholder}
-              />
+              <div className="relative">
+                <UserIcon className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  value={editRecipientValue} 
+                  onChange={(e) => setEditRecipientValue(e.target.value)} 
+                  placeholder={t.invites.recipientPlaceholder}
+                  className="pl-10"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.invites.label}</label>
-              <Input 
-                value={editLabelValue} 
-                onChange={(e) => setEditLabelValue(e.target.value)} 
-                placeholder={t.invites.labelPlaceholder}
-              />
+              <div className="relative">
+                <Tag className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  value={editLabelValue} 
+                  onChange={(e) => setEditLabelValue(e.target.value)} 
+                  placeholder={t.invites.labelPlaceholder}
+                  className="pl-10"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
