@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon, Tag, Mail, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 import {
   Dialog,
   DialogContent,
@@ -76,52 +78,64 @@ export default function InvitesPage() {
   }
 
   const generateInvite = async () => {
-    if (isGenerating) return
+    if (isGenerating || !firestore) return
     setIsGenerating(true)
     
     const code = Math.random().toString(36).substring(2, 10).toUpperCase()
     const inviteId = crypto.randomUUID()
+    const docRef = doc(firestore, "invites", inviteId)
     
-    try {
-      await setDoc(doc(firestore, "invites", inviteId), {
-        id: inviteId,
-        code: code,
-        label: inviteLabel.trim() || "General",
-        recipient: recipient.trim() || "Unassigned",
-        role: "member",
-        status: "active",
-        createdAt: serverTimestamp(),
-        usedCount: 0
-      })
-      
+    setDoc(docRef, {
+      id: inviteId,
+      code: code,
+      label: inviteLabel.trim() || "General",
+      recipient: recipient.trim() || "Unassigned",
+      role: "member",
+      status: "active",
+      createdAt: serverTimestamp(),
+      usedCount: 0
+    }).then(() => {
       setNewCode(code)
       setInviteLabel("")
       setRecipient("")
-      toast({ title: "Invite Generated", description: `Code: ${code}` })
-    } catch (err: any) {
+      toast({ title: t.common.success, description: `Code: ${code}` })
+    }).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'create',
+        requestResourceData: { code }
+      }))
       toast({ title: "Error", description: "Could not generate code.", variant: "destructive" })
-    } finally {
+    }).finally(() => {
       setIsGenerating(false)
-    }
+    })
   }
 
   const deleteInvite = async (id: string) => {
     if (!confirm(t.invites.confirmDelete)) return
-    try {
-      await deleteDoc(doc(firestore, "invites", id))
-      toast({ title: "Code Deleted", description: "Permanently removed." })
-    } catch (err: any) {
-      toast({ title: "Error", description: "Failed to delete.", variant: "destructive" })
-    }
+    if (!firestore) return
+
+    const docRef = doc(firestore, "invites", id)
+    deleteDoc(docRef)
+      .then(() => {
+        toast({ title: "DELETE SUCCESS", description: "Invite permanently removed." })
+      })
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete',
+        }))
+        toast({ title: "DELETE FAILED", description: "Permission denied or resource missing.", variant: "destructive" })
+      })
   }
 
   const toggleInvite = async (id: string, currentStatus: string) => {
+    if (!firestore) return
     const nextStatus = currentStatus === "active" ? "disabled" : "active"
-    try {
-      await updateDoc(doc(firestore, "invites", id), { status: nextStatus })
-    } catch (err: any) {
-      toast({ title: "Error", variant: "destructive" })
-    }
+    updateDoc(doc(firestore, "invites", id), { status: nextStatus })
+      .catch(err => {
+        toast({ title: "Action Failed", variant: "destructive" })
+      })
   }
 
   const openEditDialog = (inv: any) => {
@@ -133,24 +147,21 @@ export default function InvitesPage() {
   const saveEdit = async () => {
     if (!editingInvite || !firestore) return
     setIsUpdating(true)
-    try {
-      await updateDoc(doc(firestore, "invites", editingInvite.id), {
-        label: editLabelValue.trim() || "General",
-        recipient: editRecipientValue.trim() || "Unassigned"
-      })
+    updateDoc(doc(firestore, "invites", editingInvite.id), {
+      label: editLabelValue.trim() || "General",
+      recipient: editRecipientValue.trim() || "Unassigned"
+    }).then(() => {
       setEditingInvite(null)
       toast({ title: t.common.success })
-    } catch (err: any) {
-      toast({ title: "Error updating", variant: "destructive" })
-    } finally {
+    }).catch(err => {
+      toast({ title: "Update Failed", variant: "destructive" })
+    }).finally(() => {
       setIsUpdating(false)
-    }
+    })
   }
 
-  // Find user data that matches this invite code
   const getRegisteredInfo = (code: string) => {
-    const matchedUser = registeredUsers?.find(u => u.accessCode === code && u.role !== 'admin');
-    return matchedUser;
+    return registeredUsers?.find(u => u.accessCode === code && u.role !== 'admin');
   }
 
   return (
@@ -212,7 +223,7 @@ export default function InvitesPage() {
               <tr className="bg-secondary/50 border-b border-border">
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableCode}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableRecipient}</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Registered User info</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Registered Member Info</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableStatus}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest text-right">{t.invites.tableActions}</th>
               </tr>

@@ -20,6 +20,8 @@ import { useUser, useFirebase, useMemoFirebase, useDoc } from "@/firebase"
 import { doc, deleteDoc, updateDoc, increment } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { PostTradeIdea } from "./post-trade-idea"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const { user } = useUser()
@@ -58,24 +60,34 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
     if (!confirm("Are you sure you want to remove this research note?")) return
     if (!firestore) return
 
-    try {
-      await deleteDoc(doc(firestore, "tradeIdeas", idea.id))
-      toast({ title: "Note removed" })
-    } catch (err) {
-      toast({ title: "Error", description: "Failed to delete note.", variant: "destructive" })
-    }
+    const docRef = doc(firestore, "tradeIdeas", idea.id)
+    
+    // Explicit deletion with logging and context
+    deleteDoc(docRef)
+      .then(() => {
+        toast({ title: "DELETE SUCCESS", description: "Research note removed from terminal." })
+      })
+      .catch(async (err) => {
+        console.error("DELETE FAILED:", err.code || err.message)
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete',
+        })
+        errorEmitter.emit('permission-error', permissionError)
+        toast({ 
+          title: "DELETE FAILED", 
+          description: err.code === 'permission-denied' ? "Access Denied: Admin or Owner only." : "Action could not be completed.",
+          variant: "destructive" 
+        })
+      })
   }
 
   const handleLike = async () => {
     if (!firestore) return
     setLikes(prev => prev + 1)
-    try {
-      await updateDoc(doc(firestore, "tradeIdeas", idea.id), {
-        likeCount: increment(1)
-      })
-    } catch (err) {
-      console.error(err)
-    }
+    updateDoc(doc(firestore, "tradeIdeas", idea.id), {
+      likeCount: increment(1)
+    }).catch(err => console.error("Like failed:", err))
   }
 
   return (
