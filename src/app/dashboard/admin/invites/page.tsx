@@ -4,14 +4,13 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
-import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore"
+import { collection, doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon, Tag, Mail, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
-import { errorEmitter } from "@/firebase/error-emitter"
-import { FirestorePermissionError } from "@/firebase/errors"
+import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import {
   Dialog,
   DialogContent,
@@ -38,7 +37,6 @@ export default function InvitesPage() {
   const [editLabelValue, setEditLabelValue] = useState("")
   const [editRecipientValue, setEditRecipientValue] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
-  const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
 
   const userDocRef = useMemoFirebase(() => {
     if (!user || !firestore) return null
@@ -100,60 +98,26 @@ export default function InvitesPage() {
       setInviteLabel("")
       setRecipient("")
       toast({ title: t.common.success, description: `Code: ${code}` })
-    }).catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'create',
-        requestResourceData: { code }
-      }))
+    }).catch((err) => {
+      console.error("INVITE_GEN_FAILED", err);
       toast({ title: "Error", description: "Could not generate code.", variant: "destructive" })
     }).finally(() => {
       setIsGenerating(false)
     })
   }
 
-  const deleteInvite = async (id: string) => {
-    if (!confirm(t.invites.confirmDelete)) return
-    if (!firestore || isDeletingId) return
+  const deleteInvite = (id: string) => {
+    console.log("INVITE_DELETE_CLICKED", id);
 
-    setIsDeletingId(id)
-    const docPath = `invites/${id}`
-    
-    // HARD OBSERVABILITY LOG
-    console.log("DELETE_CLICK", { 
-      id, 
-      collection: "invites", 
-      docPath,
-      uid: user?.uid 
-    })
+    if (!confirm("DELETE INVITE: This will permanently revoke this access code. Are you sure?")) {
+      return;
+    }
 
-    const docRef = doc(firestore, "invites", id)
-    
-    deleteDoc(docRef)
-      .then(() => {
-        console.log("DELETE_SUCCESS", docPath)
-        toast({ title: "DELETE SUCCESS", description: `Deleted invite ${id}` })
-      })
-      .catch(async (err: any) => {
-        console.error("DELETE_FAILED", { 
-          path: docPath, 
-          code: err.code, 
-          message: err.message 
-        })
-        
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-        }))
-        toast({ 
-          title: "DELETE FAILED", 
-          description: `${err.code}: ${err.message}`, 
-          variant: "destructive" 
-        })
-      })
-      .finally(() => {
-        setIsDeletingId(null)
-      })
+    if (!firestore) return;
+
+    const docRef = doc(firestore, "invites", id);
+    deleteDocumentNonBlocking(docRef);
+    toast({ title: "Delete Requested", description: "Removing invite code..." });
   }
 
   const toggleInvite = async (id: string, currentStatus: string) => {
@@ -193,7 +157,6 @@ export default function InvitesPage() {
 
   return (
     <div className="space-y-10 pb-20">
-      {/* Header Section */}
       <header className="flex items-center gap-5">
         <div className="p-3.5 bg-primary/10 rounded-xl border border-primary/20">
           <ShieldCheck className="w-7 h-7 text-primary" />
@@ -208,7 +171,6 @@ export default function InvitesPage() {
         </div>
       </header>
 
-      {/* Generation Card */}
       <section className="terminal-card bg-card/50 backdrop-blur-sm p-6 border-border/60">
         <div className="flex flex-col md:flex-row items-end gap-5">
           <div className="flex-1 space-y-2.5 w-full">
@@ -252,7 +214,6 @@ export default function InvitesPage() {
         </div>
       </section>
 
-      {/* Success Notification */}
       {newCode && (
         <div className="p-7 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-6 duration-500">
           <div className="space-y-1">
@@ -277,7 +238,6 @@ export default function InvitesPage() {
         </div>
       )}
 
-      {/* Data Table Section */}
       <div className="terminal-card bg-card overflow-hidden border-border/60">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-separate border-spacing-0">
@@ -347,8 +307,8 @@ export default function InvitesPage() {
                         <Button variant="ghost" size="sm" onClick={() => toggleInvite(inv.id, inv.status)} className="h-9 text-[10px] font-black uppercase tracking-widest px-3 hover:bg-secondary">
                           {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => deleteInvite(inv.id)} disabled={isDeletingId === inv.id} className="h-9 w-9 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10">
-                          {isDeletingId === inv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        <Button size="icon" variant="ghost" onClick={() => deleteInvite(inv.id)} className="h-9 w-9 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer">
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -360,7 +320,6 @@ export default function InvitesPage() {
         </div>
       </div>
 
-      {/* Edit Dialog */}
       <Dialog open={!!editingInvite} onOpenChange={(open) => !open && setEditingInvite(null)}>
         <DialogContent className="max-w-md terminal-card bg-card border-border/80">
           <DialogHeader>

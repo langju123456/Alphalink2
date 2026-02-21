@@ -18,11 +18,10 @@ import {
 import { useState, useEffect } from "react"
 import { Button } from "./ui/button"
 import { useUser, useFirebase, useMemoFirebase, useDoc } from "@/firebase"
-import { doc, deleteDoc, updateDoc, increment } from "firebase/firestore"
+import { doc, updateDoc, increment } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { PostTradeIdea } from "./post-trade-idea"
-import { errorEmitter } from "@/firebase/error-emitter"
-import { FirestorePermissionError } from "@/firebase/errors"
+import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 
 export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const { user } = useUser()
@@ -59,55 +58,40 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const isAdmin = userProfile?.role === "admin"
   const canManage = isOwner || isAdmin
 
-  const handleDelete = async () => {
-    if (isDeleting || !firestore) return
-    if (!confirm("Confirm Deletion: This research note will be permanently removed from the terminal feed.")) return
-    
-    setIsDeleting(true)
-    const docPath = `tradeIdeas/${idea.id}`
-    
-    // HARD OBSERVABILITY LOG
-    console.log("DELETE_CLICK", { 
+  const handleDelete = () => {
+    // IMMEDIATE OBSERVABILITY
+    console.log("CRITICAL: DELETE_BUTTON_PRESSED", { 
       id: idea.id, 
-      collection: "tradeIdeas", 
-      docPath,
-      userRole: userProfile?.role,
+      path: `tradeIdeas/${idea.id}`,
+      role: userProfile?.role,
       uid: user?.uid 
-    })
+    });
 
-    const docRef = doc(firestore, "tradeIdeas", idea.id)
+    if (!confirm("PERMANENT DELETE: This research note will be removed from all community terminals. Proceed?")) {
+      console.log("DELETE_CANCELLED_BY_USER");
+      return;
+    }
     
-    deleteDoc(docRef)
-      .then(() => {
-        console.log("DELETE_SUCCESS", docPath)
-        toast({ 
-          title: "DELETE SUCCESS", 
-          description: `Deleted document ${idea.id}` 
-        })
-      })
-      .catch(async (err: any) => {
-        console.error("DELETE_FAILED", { 
-          path: docPath, 
-          code: err.code, 
-          message: err.message 
-        })
-        
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-        })
-        
-        errorEmitter.emit('permission-error', permissionError)
-        
-        toast({ 
-          title: "DELETE FAILED", 
-          description: `${err.code}: ${err.message}`,
-          variant: "destructive" 
-        })
-      })
-      .finally(() => {
-        setIsDeleting(false)
-      })
+    if (!firestore) {
+      console.error("DELETE_FAILED: Firestore service is missing.");
+      toast({ title: "System Error", description: "Database service unavailable.", variant: "destructive" });
+      return;
+    }
+
+    setIsDeleting(true);
+    const docRef = doc(firestore, "tradeIdeas", idea.id);
+    
+    console.log("INITIATING_FIRESTORE_DELETE", docRef.path);
+    
+    // Use the robust utility that handles global error emitting and toasts
+    deleteDocumentNonBlocking(docRef);
+    
+    // Note: Since we use useCollection (onSnapshot), the UI will auto-remove the card if delete succeeds.
+    // We show a local feedback toast immediately.
+    toast({ title: "Delete Requested", description: "Processing removal from terminal..." });
+    
+    // Small delay to prevent double-click flicker while sync happens
+    setTimeout(() => setIsDeleting(false), 2000);
   }
 
   const handleLike = async () => {
@@ -155,7 +139,6 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
           </div>
         </div>
 
-        {/* AI SUMMARY SECTION */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 bg-primary/5 border border-primary/10 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
@@ -189,7 +172,6 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
           </div>
         </div>
 
-        {/* DATA TABLES */}
         {!isStock && idea.legs && (
           <div className="mb-6 overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
@@ -264,7 +246,7 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
                   size="sm" 
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  className="text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 gap-2"
+                  className="text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 gap-2 cursor-pointer"
                 >
                   {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                   <span className="text-xs font-bold">Delete</span>
