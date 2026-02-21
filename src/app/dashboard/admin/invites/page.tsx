@@ -4,13 +4,12 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
-import { collection, doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore"
+import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon, Tag, Mail, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
-import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import {
   Dialog,
   DialogContent,
@@ -106,18 +105,30 @@ export default function InvitesPage() {
     })
   }
 
-  const deleteInvite = (id: string) => {
-    console.log("INVITE_DELETE_CLICKED", id);
-
-    if (!confirm("DELETE INVITE: This will permanently revoke this access code. Are you sure?")) {
+  const deleteInvite = async (id: string) => {
+    console.log("CRITICAL: INVITE_DELETE_START", id);
+    
+    if (!firestore) {
+      toast({ title: "System Error", description: "Firestore not ready.", variant: "destructive" });
       return;
     }
 
-    if (!firestore) return;
+    toast({ title: "Deleting...", description: "Requesting removal from database." });
 
     const docRef = doc(firestore, "invites", id);
-    deleteDocumentNonBlocking(docRef);
-    toast({ title: "Delete Requested", description: "Removing invite code..." });
+    
+    try {
+      await deleteDoc(docRef);
+      console.log("CRITICAL: INVITE_DELETE_SENT", id);
+      toast({ title: "Deleted", description: `Invite ${id} removed successfully.` });
+    } catch (err: any) {
+      console.error("CRITICAL: INVITE_DELETE_ERROR", err);
+      toast({ 
+        title: "Delete Failed", 
+        description: `Error: ${err.code || err.message || "Unknown error"}`, 
+        variant: "destructive" 
+      });
+    }
   }
 
   const toggleInvite = async (id: string, currentStatus: string) => {

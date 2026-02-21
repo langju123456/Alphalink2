@@ -18,10 +18,9 @@ import {
 import { useState, useEffect } from "react"
 import { Button } from "./ui/button"
 import { useUser, useFirebase, useMemoFirebase, useDoc } from "@/firebase"
-import { doc, updateDoc, increment } from "firebase/firestore"
+import { doc, updateDoc, increment, deleteDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { PostTradeIdea } from "./post-trade-idea"
-import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 
 export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const { user } = useUser()
@@ -58,40 +57,33 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const isAdmin = userProfile?.role === "admin"
   const canManage = isOwner || isAdmin
 
-  const handleDelete = () => {
-    // IMMEDIATE OBSERVABILITY
-    console.log("CRITICAL: DELETE_BUTTON_PRESSED", { 
-      id: idea.id, 
-      path: `tradeIdeas/${idea.id}`,
-      role: userProfile?.role,
-      uid: user?.uid 
-    });
-
-    if (!confirm("PERMANENT DELETE: This research note will be removed from all community terminals. Proceed?")) {
-      console.log("DELETE_CANCELLED_BY_USER");
-      return;
-    }
+  const handleDelete = async () => {
+    console.log("CRITICAL: NOTE_DELETE_START", idea.id);
     
     if (!firestore) {
-      console.error("DELETE_FAILED: Firestore service is missing.");
-      toast({ title: "System Error", description: "Database service unavailable.", variant: "destructive" });
+      toast({ title: "System Error", description: "Firestore not ready.", variant: "destructive" });
       return;
     }
 
     setIsDeleting(true);
+    toast({ title: "Deleting...", description: "Removing note from terminal." });
+
     const docRef = doc(firestore, "tradeIdeas", idea.id);
     
-    console.log("INITIATING_FIRESTORE_DELETE", docRef.path);
-    
-    // Use the robust utility that handles global error emitting and toasts
-    deleteDocumentNonBlocking(docRef);
-    
-    // Note: Since we use useCollection (onSnapshot), the UI will auto-remove the card if delete succeeds.
-    // We show a local feedback toast immediately.
-    toast({ title: "Delete Requested", description: "Processing removal from terminal..." });
-    
-    // Small delay to prevent double-click flicker while sync happens
-    setTimeout(() => setIsDeleting(false), 2000);
+    try {
+      await deleteDoc(docRef);
+      console.log("CRITICAL: NOTE_DELETE_SENT", idea.id);
+      toast({ title: "Deleted", description: "Research note removed successfully." });
+    } catch (err: any) {
+      console.error("CRITICAL: NOTE_DELETE_ERROR", err);
+      toast({ 
+        title: "Delete Failed", 
+        description: `Error: ${err.code || err.message}`, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   const handleLike = async () => {

@@ -9,12 +9,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
     // Simplified Admin check: Directly read from the user document.
-    // Ensure the path is exact and uses the request.auth.uid.
     function isAdmin() {
       return isSignedIn() && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
@@ -25,16 +20,15 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create: if isOwner(userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
       // Users can update their profile but NOT their role
-      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
     }
 
     // --- Invitation System ---
 
     match /invites/{inviteId} {
-      // Allow any signed-in user to check if an invite exists (used for code validation)
       allow get, list: if isSignedIn();
       // Only admins can create, modify, or delete invite codes
       allow create, update, delete: if isAdmin();
@@ -56,7 +50,7 @@ service cloud.firestore {
 
       match /likes/{userId} {
         allow get, list: if isSignedIn();
-        allow create, delete: if isOwner(userId);
+        allow create, delete: if isSignedIn() && request.auth.uid == userId;
       }
     }
 
@@ -71,7 +65,7 @@ service cloud.firestore {
     // --- User-specific Chat Messages ---
 
     match /users/{userId}/messages/{messageId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
   }
 }
