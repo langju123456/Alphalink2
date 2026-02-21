@@ -1,26 +1,59 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
+import { useRouter } from "next/navigation"
+import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
 import { collection, doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
-import { Plus, Copy, Loader2 } from "lucide-react"
+import { Plus, Copy, Loader2, ShieldCheck } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 
 export default function InvitesPage() {
+  const router = useRouter()
+  const { user } = useUser()
+  const { firestore } = useFirebase()
+  const { toast } = useToast()
+  
   const [isGenerating, setIsGenerating] = useState(false)
   const [newCode, setNewCode] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
-  const { toast } = useToast()
-  const { firestore } = useFirebase()
+
+  // Fetch current user's role from Firestore to verify admin status
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null
+    return doc(firestore, "users", user.uid)
+  }, [user, firestore])
+  
+  const { data: userProfile, isLoading: isRoleLoading } = useDoc(userDocRef)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Security Redirect: If user is not an admin, push back to feed
+  useEffect(() => {
+    if (!isRoleLoading && userProfile && userProfile.role !== "admin") {
+      router.push("/dashboard/feed")
+      toast({
+        title: "Access Denied",
+        description: "Admin terminal is restricted to authorized desk personnel.",
+        variant: "destructive"
+      })
+    }
+  }, [userProfile, isRoleLoading, router, toast])
+
   const invitesQuery = useMemoFirebase(() => collection(firestore, "invites"), [firestore])
-  const { data: invites, isLoading } = useCollection(invitesQuery)
+  const { data: invites, isLoading: isInvitesLoading } = useCollection(invitesQuery)
+
+  if (isRoleLoading || (userProfile && userProfile.role !== "admin")) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    )
+  }
 
   const generateInvite = async () => {
     setIsGenerating(true)
@@ -75,9 +108,14 @@ export default function InvitesPage() {
   return (
     <div className="space-y-8">
       <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-headline font-bold text-white">Access Management</h1>
-          <p className="text-muted-foreground text-sm">Generate and manage invitation codes for private members.</p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-primary/10 rounded-full">
+            <ShieldCheck className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-headline font-bold text-white">Access Management</h1>
+            <p className="text-muted-foreground text-sm">Generate and manage invitation codes for private members.</p>
+          </div>
         </div>
         <Button onClick={generateInvite} disabled={isGenerating} className="bg-primary hover:bg-primary/90 font-bold gap-2">
           {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
@@ -86,7 +124,7 @@ export default function InvitesPage() {
       </header>
 
       {newCode && (
-        <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between">
+        <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
           <div>
             <p className="text-[10px] uppercase font-bold text-emerald-400 tracking-widest mb-1">Newly Generated Access Code</p>
             <p className="text-3xl font-code font-bold text-white tracking-tighter">{newCode}</p>
@@ -106,20 +144,20 @@ export default function InvitesPage() {
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Code</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Status</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Created</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Actions</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isInvitesLoading ? (
                 <tr>
-                  <td colSpan={4} className="p-10 text-center text-muted-foreground">Loading terminal data...</td>
+                  <td colSpan={4} className="p-10 text-center text-muted-foreground italic">Fetching encrypted terminal data...</td>
                 </tr>
               ) : invites && invites.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="p-10 text-center text-muted-foreground">No invites generated yet.</td>
                 </tr>
               ) : invites?.map((inv: any) => (
-                <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
+                <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors group">
                   <td className="p-4 font-code">
                     <span className="text-white font-bold">{inv.code}</span>
                   </td>
@@ -130,19 +168,19 @@ export default function InvitesPage() {
                       {inv.status}
                     </span>
                   </td>
-                  <td className="p-4 text-xs text-muted-foreground">
+                  <td className="p-4 text-xs text-muted-foreground font-code">
                     {mounted && inv.createdAt?.toDate 
-                      ? format(inv.createdAt.toDate(), "MMM d, HH:mm") 
+                      ? format(inv.createdAt.toDate(), "yyyy-MM-dd HH:mm") 
                       : "..."}
                   </td>
-                  <td className="p-4">
+                  <td className="p-4 text-right">
                     <Button 
                       size="sm" 
                       variant="ghost" 
                       onClick={() => toggleInvite(inv.id, inv.status)}
-                      className={`text-xs font-bold uppercase ${inv.status === "active" ? "hover:text-rose-400 hover:bg-rose-500/10" : "hover:text-emerald-400 hover:bg-emerald-500/10"}`}
+                      className={`text-[10px] font-bold uppercase tracking-tighter ${inv.status === "active" ? "hover:text-rose-400 hover:bg-rose-500/10" : "hover:text-emerald-400 hover:bg-emerald-500/10"}`}
                     >
-                      {inv.status === "active" ? "Disable" : "Enable"}
+                      {inv.status === "active" ? "Disable Access" : "Re-Enable"}
                     </Button>
                   </td>
                 </tr>
