@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
@@ -11,8 +11,13 @@ import { format } from "date-fns"
 export default function InvitesPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [newCode, setNewCode] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   const { toast } = useToast()
   const { firestore } = useFirebase()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const invitesQuery = useMemoFirebase(() => collection(firestore, "invites"), [firestore])
   const { data: invites, isLoading } = useCollection(invitesQuery)
@@ -126,7 +131,9 @@ export default function InvitesPage() {
                     </span>
                   </td>
                   <td className="p-4 text-xs text-muted-foreground">
-                    {inv.createdAt?.toDate ? format(inv.createdAt.toDate(), "MMM d, HH:mm") : "Pending..."}
+                    {mounted && inv.createdAt?.toDate 
+                      ? format(inv.createdAt.toDate(), "MMM d, HH:mm") 
+                      : "..."}
                   </td>
                   <td className="p-4">
                     <Button 

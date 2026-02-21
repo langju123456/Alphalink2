@@ -12,13 +12,28 @@ import {
   Lightbulb,
   Heart
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "./ui/button"
 
 export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const [likes, setLikes] = useState(idea.likeCount || 0)
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const isStock = idea.instrumentType === "STOCK"
   const direction = isStock ? idea.direction : (idea.legs?.[0]?.type === "CALL" ? "LONG" : "SHORT")
+
+  const getPostedAt = () => {
+    if (!mounted || !idea.createdAt) return "..."
+    // Handle both number timestamps and Firestore Timestamp objects
+    const date = typeof idea.createdAt === 'number' 
+      ? idea.createdAt 
+      : (idea.createdAt as any).toDate?.() || new Date()
+    return `${formatDistanceToNow(date)} ago`
+  }
 
   return (
     <div className="terminal-card mb-6 group">
@@ -46,7 +61,7 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
                 )}
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                Posted {formatDistanceToNow(idea.createdAt)} ago by {idea.createdBy}
+                Posted {getPostedAt()} by {idea.createdBy}
               </p>
             </div>
           </div>

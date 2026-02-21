@@ -23,7 +23,7 @@ export interface TradeIdea {
   aiSummaryBullets: string[];
   riskLine: string;
   payoffHint: string;
-  createdAt: number;
+  createdAt: any; // Can be number or Firestore Timestamp
   createdBy: string;
   likeCount: number;
   
@@ -45,18 +45,18 @@ export interface TradeIdea {
 export interface Highlight {
   id: string;
   title: string;
-  ticker: string;
+  tickerOrUnderlying: string;
   returnPct: number;
   date: string;
   description: string;
-  createdAt: number;
+  createdAt: any;
 }
 
 export interface Invite {
   id: string;
-  code: string; // Plain code for MVP display once
+  code: string;
   role: 'member';
   status: 'active' | 'disabled';
-  createdAt: number;
+  createdAt: any;
   usedCount: number;
 }
