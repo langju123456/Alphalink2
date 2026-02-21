@@ -42,8 +42,8 @@ export const translations = {
       returnLabel: "Return"
     },
     invites: {
-      title: "Access Management",
-      description: "Generate invitation codes for private members.",
+      title: "Member Access Management",
+      description: "Create exclusive invitation codes for private members.",
       label: "Group / Name",
       labelPlaceholder: "e.g. VIP Group",
       recipient: "Recipient",
@@ -123,8 +123,8 @@ export const translations = {
       returnLabel: "收益率"
     },
     invites: {
-      title: "权限管理",
-      description: "为私有成员生成访问邀请码。",
+      title: "成员访问管理",
+      description: "为私域成员创建专属邀请码",
       label: "分组 / 名称",
       labelPlaceholder: "例如：VIP群组",
       recipient: "领用人",

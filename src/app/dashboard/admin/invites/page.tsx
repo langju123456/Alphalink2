@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -170,125 +171,162 @@ export default function InvitesPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-primary/10 rounded-full">
-            <ShieldCheck className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-headline font-bold text-foreground">{t.invites.title}</h1>
-            <p className="text-muted-foreground text-sm">{t.invites.description}</p>
-          </div>
+    <div className="space-y-10 pb-20">
+      {/* Header Section */}
+      <header className="flex items-center gap-5">
+        <div className="p-3.5 bg-primary/10 rounded-xl border border-primary/20">
+          <ShieldCheck className="w-7 h-7 text-primary" />
         </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch gap-3">
-          <div className="relative w-full sm:w-48">
-             <UserIcon className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-             <Input 
-              placeholder={t.invites.recipientPlaceholder}
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-              className="h-11 bg-card border-border pl-10"
-            />
-          </div>
-          <div className="relative w-full sm:w-48">
-             <Tag className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-             <Input 
-              placeholder={t.invites.labelPlaceholder}
-              value={inviteLabel}
-              onChange={(e) => setInviteLabel(e.target.value)}
-              className="h-11 bg-card border-border pl-10"
-            />
-          </div>
-          <Button onClick={generateInvite} disabled={isGenerating} className="bg-primary font-bold h-11">
-            {isGenerating ? <Loader2 className="animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-            {t.invites.generateBtn}
-          </Button>
+        <div className="space-y-1">
+          <h1 className="text-[28px] font-semibold tracking-tight text-foreground leading-none">
+            {t.invites.title}
+          </h1>
+          <p className="text-sm text-muted-foreground/80 font-medium">
+            {t.invites.description}
+          </p>
         </div>
       </header>
 
-      {newCode && (
-        <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
-          <div>
-            <p className="text-[10px] uppercase font-bold text-emerald-400 tracking-widest mb-1">{t.invites.newlyGenerated}</p>
-            <p className="text-4xl font-code font-bold text-emerald-400 tracking-tighter">{newCode}</p>
+      {/* Generation Card */}
+      <section className="terminal-card bg-card/50 backdrop-blur-sm p-6 border-border/60">
+        <div className="flex flex-col md:flex-row items-end gap-5">
+          <div className="flex-1 space-y-2.5 w-full">
+            <label className="text-[11px] uppercase font-bold text-muted-foreground tracking-wider ml-1">
+              {t.invites.recipient}
+            </label>
+            <div className="relative">
+               <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+               <Input 
+                placeholder={t.invites.recipientPlaceholder}
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                className="h-12 bg-background/50 border-border/80 pl-10 focus:ring-primary/20"
+              />
+            </div>
           </div>
-          <Button onClick={() => navigator.clipboard.writeText(newCode)} variant="outline" className="border-emerald-500/40 text-emerald-400">
+
+          <div className="flex-1 space-y-2.5 w-full">
+            <label className="text-[11px] uppercase font-bold text-muted-foreground tracking-wider ml-1">
+              {t.invites.label}
+            </label>
+            <div className="relative">
+               <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+               <Input 
+                placeholder={t.invites.labelPlaceholder}
+                value={inviteLabel}
+                onChange={(e) => setInviteLabel(e.target.value)}
+                className="h-12 bg-background/50 border-border/80 pl-10 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+
+          <Button 
+            onClick={generateInvite} 
+            disabled={isGenerating} 
+            className="h-12 px-8 bg-primary hover:bg-primary/90 text-white font-bold transition-all shadow-lg shadow-primary/20"
+          >
+            {isGenerating ? <Loader2 className="animate-spin" /> : <Plus className="w-5 h-5 mr-2" />}
+            {t.invites.generateBtn}
+          </Button>
+        </div>
+      </section>
+
+      {/* Success Notification */}
+      {newCode && (
+        <div className="p-7 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-6 duration-500">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase font-black text-emerald-400 tracking-[0.2em] mb-1 opacity-80">
+              {t.invites.newlyGenerated}
+            </p>
+            <p className="text-5xl font-code font-bold text-emerald-400 tracking-tighter">
+              {newCode}
+            </p>
+          </div>
+          <Button 
+            onClick={() => {
+              navigator.clipboard.writeText(newCode);
+              toast({ title: "Copied", description: "Access code copied to clipboard." });
+            }} 
+            variant="outline" 
+            className="h-12 px-6 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-bold"
+          >
             <Copy className="w-4 h-4 mr-2" />
             {t.invites.copyBtn}
           </Button>
         </div>
       )}
 
-      <div className="terminal-card bg-card">
+      {/* Data Table Section */}
+      <div className="terminal-card bg-card overflow-hidden border-border/60">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm border-separate border-spacing-0">
             <thead>
-              <tr className="bg-secondary/50 border-b border-border">
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableCode}</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableRecipient}</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Registered Member Info</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableStatus}</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest text-right">{t.invites.tableActions}</th>
+              <tr className="bg-secondary/30">
+                <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">{t.invites.tableCode}</th>
+                <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">{t.invites.tableRecipient}</th>
+                <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">Member Activity</th>
+                <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">{t.invites.tableStatus}</th>
+                <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em] text-right">{t.invites.tableActions}</th>
               </tr>
             </thead>
             <tbody>
               {isInvitesLoading ? (
-                <tr><td colSpan={5} className="p-10 text-center italic">Loading terminal data...</td></tr>
+                <tr><td colSpan={5} className="p-20 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-primary/40" /></td></tr>
               ) : invites?.length === 0 ? (
-                <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">No active invitations found.</td></tr>
+                <tr><td colSpan={5} className="p-20 text-center text-muted-foreground font-medium italic">No active invitations found.</td></tr>
               ) : invites?.map((inv: any) => {
                 const reg = getRegisteredInfo(inv.code);
                 return (
-                  <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors group">
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <span className="font-code font-bold text-foreground text-lg">{inv.code}</span>
-                        <span className="text-[9px] text-muted-foreground uppercase flex items-center gap-1">
-                          <Tag className="w-2 h-2" /> {inv.label}
-                        </span>
+                  <tr key={inv.id} className="group hover:bg-secondary/20 transition-all border-b border-border/40">
+                    <td className="p-5">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-code font-bold text-foreground text-lg tracking-tight">{inv.code}</span>
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 font-bold uppercase">
+                          <Tag className="w-3 h-3" /> {inv.label}
+                        </div>
                       </div>
                     </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs font-semibold">{inv.recipient || "Unassigned"}</span>
+                    <td className="p-5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center border border-border/50">
+                          <UserIcon className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <span className="text-sm font-semibold text-foreground/90">{inv.recipient || "Unassigned"}</span>
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-5">
                       {reg ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-emerald-400">
-                            <Check className="w-3 h-3" />
-                            <span className="font-bold">{reg.displayName}</span>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{reg.displayName}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            <Mail className="w-2.5 h-2.5" />
-                            <span>{reg.contactInfo}</span>
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+                            <Mail className="w-3 h-3" />
+                            <span className="font-medium">{reg.contactInfo}</span>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-muted-foreground/40 italic text-xs">
-                          <Info className="w-3 h-3" />
-                          <span>Not activated yet</span>
+                        <div className="flex items-center gap-2 text-muted-foreground/30 italic text-xs font-medium">
+                          <Info className="w-3.5 h-3.5 opacity-50" />
+                          <span>Awaiting activation</span>
                         </div>
                       )}
                     </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${inv.status === "active" ? "text-emerald-400 bg-emerald-400/10" : "text-rose-400 bg-rose-400/10"}`}>
+                    <td className="p-5">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${inv.status === "active" ? "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20" : "text-rose-400 bg-rose-400/10 border border-rose-400/20"}`}>
                         {inv.status === "active" ? t.invites.active : t.invites.disabled}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => openEditDialog(inv)} className="text-muted-foreground hover:text-primary">
+                    <td className="p-5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button size="icon" variant="ghost" onClick={() => openEditDialog(inv)} className="h-9 w-9 text-muted-foreground/60 hover:text-primary hover:bg-primary/10">
                           <Edit2 className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => toggleInvite(inv.id, inv.status)} className="text-[10px] uppercase">
+                        <Button variant="ghost" size="sm" onClick={() => toggleInvite(inv.id, inv.status)} className="h-9 text-[10px] font-black uppercase tracking-widest px-3 hover:bg-secondary">
                           {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => deleteInvite(inv.id)} disabled={isDeletingId === inv.id} className="text-rose-500 hover:bg-rose-500/10">
+                        <Button size="icon" variant="ghost" onClick={() => deleteInvite(inv.id)} disabled={isDeletingId === inv.id} className="h-9 w-9 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10">
                           {isDeletingId === inv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </Button>
                       </div>
@@ -301,38 +339,43 @@ export default function InvitesPage() {
         </div>
       </div>
 
+      {/* Edit Dialog */}
       <Dialog open={!!editingInvite} onOpenChange={(open) => !open && setEditingInvite(null)}>
-        <DialogContent className="bg-card">
-          <DialogHeader><DialogTitle>{t.invites.editLabel}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
+        <DialogContent className="max-w-md terminal-card bg-card border-border/80">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-headline font-bold text-foreground">
+              {t.invites.editLabel}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-6">
             <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.invites.recipient}</label>
+              <label className="text-[11px] uppercase font-bold text-muted-foreground tracking-widest ml-1">{t.invites.recipient}</label>
               <div className="relative">
-                <UserIcon className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                 <Input 
                   value={editRecipientValue} 
                   onChange={(e) => setEditRecipientValue(e.target.value)} 
                   placeholder={t.invites.recipientPlaceholder}
-                  className="pl-10"
+                  className="h-11 pl-10 bg-secondary/20"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.invites.label}</label>
+              <label className="text-[11px] uppercase font-bold text-muted-foreground tracking-widest ml-1">{t.invites.label}</label>
               <div className="relative">
-                <Tag className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                 <Input 
                   value={editLabelValue} 
                   onChange={(e) => setEditLabelValue(e.target.value)} 
                   placeholder={t.invites.labelPlaceholder}
-                  className="pl-10"
+                  className="h-11 pl-10 bg-secondary/20"
                 />
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditingInvite(null)}>{t.common.cancel}</Button>
-            <Button onClick={saveEdit} disabled={isUpdating} className="bg-primary font-bold">
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setEditingInvite(null)} className="font-bold">{t.common.cancel}</Button>
+            <Button onClick={saveEdit} disabled={isUpdating} className="bg-primary font-bold px-6">
               {isUpdating ? <Loader2 className="animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
               {t.invites.saveChanges}
             </Button>
