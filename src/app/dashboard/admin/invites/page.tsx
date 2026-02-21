@@ -115,11 +115,11 @@ export default function InvitesPage() {
             <ShieldCheck className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-headline font-bold text-white">Access Management</h1>
+            <h1 className="text-3xl font-headline font-bold text-foreground">Access Management</h1>
             <p className="text-muted-foreground text-sm">Generate and manage invitation codes for private members.</p>
           </div>
         </div>
-        <Button onClick={generateInvite} disabled={isGenerating} className="bg-primary hover:bg-primary/90 font-bold gap-2">
+        <Button onClick={generateInvite} disabled={isGenerating} className="bg-primary hover:bg-primary/90 font-bold gap-2 text-white">
           {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Generate New Invite
         </Button>
@@ -128,17 +128,17 @@ export default function InvitesPage() {
       {newCode && (
         <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
           <div>
-            <p className="text-[10px] uppercase font-bold text-emerald-400 tracking-widest mb-1">Newly Generated Access Code</p>
-            <p className="text-3xl font-code font-bold text-white tracking-tighter">{newCode}</p>
+            <p className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-widest mb-1">Newly Generated Access Code</p>
+            <p className="text-4xl font-code font-bold text-emerald-700 dark:text-emerald-300 tracking-tighter">{newCode}</p>
           </div>
-          <Button onClick={() => copyToClipboard(newCode)} variant="outline" className="border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20">
+          <Button onClick={() => copyToClipboard(newCode)} variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 font-bold">
             <Copy className="w-4 h-4 mr-2" />
             Copy Code
           </Button>
         </div>
       )}
 
-      <div className="terminal-card">
+      <div className="terminal-card bg-card">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
@@ -161,11 +161,11 @@ export default function InvitesPage() {
               ) : invites?.map((inv: any) => (
                 <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors group">
                   <td className="p-4 font-code">
-                    <span className="text-white font-bold">{inv.code}</span>
+                    <span className="text-foreground font-bold text-base">{inv.code}</span>
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
-                      inv.status === "active" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                      inv.status === "active" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
                     }`}>
                       {inv.status}
                     </span>
@@ -180,7 +180,7 @@ export default function InvitesPage() {
                       size="sm" 
                       variant="ghost" 
                       onClick={() => toggleInvite(inv.id, inv.status)}
-                      className={`text-[10px] font-bold uppercase tracking-tighter ${inv.status === "active" ? "hover:text-rose-400 hover:bg-rose-500/10" : "hover:text-emerald-400 hover:bg-emerald-500/10"}`}
+                      className={`text-[10px] font-bold uppercase tracking-tighter ${inv.status === "active" ? "hover:text-rose-500 hover:bg-rose-500/10" : "hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                     >
                       {inv.status === "active" ? "Disable Access" : "Re-Enable"}
                     </Button>
