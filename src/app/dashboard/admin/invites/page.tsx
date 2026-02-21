@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -5,18 +6,22 @@ import { useRouter } from "next/navigation"
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
 import { collection, doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
-import { Plus, Copy, Loader2, ShieldCheck } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Plus, Copy, Loader2, ShieldCheck, Tag } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
+import { useLanguage } from "@/components/language-provider"
 
 export default function InvitesPage() {
   const router = useRouter()
   const { user } = useUser()
   const { firestore } = useFirebase()
   const { toast } = useToast()
+  const { t } = useLanguage()
   
   const [isGenerating, setIsGenerating] = useState(false)
   const [newCode, setNewCode] = useState<string | null>(null)
+  const [inviteLabel, setInviteLabel] = useState("")
   const [mounted, setMounted] = useState(false)
 
   // Fetch current user's role from Firestore
@@ -43,7 +48,7 @@ export default function InvitesPage() {
     }
   }, [userProfile, isRoleLoading, router, toast])
 
-  // CRITICAL: Only fetch invites if we are sure the user is an admin
+  // Only fetch invites if we are sure the user is an admin
   const invitesQuery = useMemoFirebase(() => {
     if (!firestore || !userProfile || userProfile.role !== "admin") return null;
     return collection(firestore, "invites");
@@ -60,7 +65,9 @@ export default function InvitesPage() {
   }
 
   const generateInvite = async () => {
+    if (isGenerating) return
     setIsGenerating(true)
+    
     const code = Math.random().toString(36).substring(2, 10).toUpperCase()
     const inviteId = crypto.randomUUID()
     
@@ -68,6 +75,7 @@ export default function InvitesPage() {
       await setDoc(doc(firestore, "invites", inviteId), {
         id: inviteId,
         code: code,
+        label: inviteLabel.trim() || "General",
         role: "member",
         status: "active",
         createdAt: serverTimestamp(),
@@ -75,9 +83,10 @@ export default function InvitesPage() {
       })
       
       setNewCode(code)
+      setInviteLabel("")
       toast({
         title: "Invite Generated",
-        description: "Ensure you copy the code now."
+        description: `Code for "${inviteLabel || 'General'}" is ready.`
       })
     } catch (err: any) {
       toast({
@@ -109,31 +118,43 @@ export default function InvitesPage() {
 
   return (
     <div className="space-y-8">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-primary/10 rounded-full">
             <ShieldCheck className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-headline font-bold text-foreground">Access Management</h1>
-            <p className="text-muted-foreground text-sm">Generate and manage invitation codes for private members.</p>
+            <h1 className="text-3xl font-headline font-bold text-foreground">{t.invites.title}</h1>
+            <p className="text-muted-foreground text-sm">{t.invites.description}</p>
           </div>
         </div>
-        <Button onClick={generateInvite} disabled={isGenerating} className="bg-primary hover:bg-primary/90 font-bold gap-2 text-white">
-          {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Generate New Invite
-        </Button>
+
+        <div className="flex flex-col sm:flex-row items-stretch gap-3">
+          <div className="relative">
+            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              placeholder={t.invites.labelPlaceholder}
+              value={inviteLabel}
+              onChange={(e) => setInviteLabel(e.target.value)}
+              className="pl-10 h-11 bg-card border-border w-full sm:w-64"
+            />
+          </div>
+          <Button onClick={generateInvite} disabled={isGenerating || isRoleLoading} className="bg-primary hover:bg-primary/90 font-bold gap-2 text-white h-11">
+            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {t.invites.generateBtn}
+          </Button>
+        </div>
       </header>
 
       {newCode && (
         <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
           <div>
-            <p className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-widest mb-1">Newly Generated Access Code</p>
-            <p className="text-4xl font-code font-bold text-emerald-700 dark:text-emerald-300 tracking-tighter">{newCode}</p>
+            <p className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-widest mb-1">{t.invites.newlyGenerated}</p>
+            <p className="text-4xl font-code font-bold text-emerald-600 dark:text-emerald-400 tracking-tighter">{newCode}</p>
           </div>
           <Button onClick={() => copyToClipboard(newCode)} variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 font-bold">
             <Copy className="w-4 h-4 mr-2" />
-            Copy Code
+            {t.invites.copyBtn}
           </Button>
         </div>
       )}
@@ -143,20 +164,21 @@ export default function InvitesPage() {
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-secondary/50 border-b border-border">
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Code</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Status</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Created</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest text-right">Actions</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableCode}</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableLabel}</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableStatus}</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableCreated}</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest text-right">{t.invites.tableActions}</th>
               </tr>
             </thead>
             <tbody>
               {isInvitesLoading ? (
                 <tr>
-                  <td colSpan={4} className="p-10 text-center text-muted-foreground italic">Fetching encrypted terminal data...</td>
+                  <td colSpan={5} className="p-10 text-center text-muted-foreground italic">Fetching encrypted terminal data...</td>
                 </tr>
-              ) : invites && invites.length === 0 ? (
+              ) : !invites || invites.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-10 text-center text-muted-foreground">No invites generated yet.</td>
+                  <td colSpan={5} className="p-10 text-center text-muted-foreground">No invites generated yet.</td>
                 </tr>
               ) : invites?.map((inv: any) => (
                 <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors group">
@@ -164,10 +186,15 @@ export default function InvitesPage() {
                     <span className="text-foreground font-bold text-base">{inv.code}</span>
                   </td>
                   <td className="p-4">
+                    <span className="text-xs font-bold text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">
+                      {inv.label || "General"}
+                    </span>
+                  </td>
+                  <td className="p-4">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
                       inv.status === "active" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
                     }`}>
-                      {inv.status}
+                      {inv.status === "active" ? t.invites.active : t.invites.disabled}
                     </span>
                   </td>
                   <td className="p-4 text-xs text-muted-foreground font-code">
@@ -182,7 +209,7 @@ export default function InvitesPage() {
                       onClick={() => toggleInvite(inv.id, inv.status)}
                       className={`text-[10px] font-bold uppercase tracking-tighter ${inv.status === "active" ? "hover:text-rose-500 hover:bg-rose-500/10" : "hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                     >
-                      {inv.status === "active" ? "Disable Access" : "Re-Enable"}
+                      {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
                     </Button>
                   </td>
                 </tr>

@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'zh';
 
 export const translations = {
@@ -39,6 +40,24 @@ export const translations = {
       noHighlights: "No performance highlights documented yet.",
       verified: "Desk Verified",
       returnLabel: "Return"
+    },
+    invites: {
+      title: "Access Management",
+      description: "Generate and manage invitation codes for private members.",
+      label: "Group / Name",
+      labelPlaceholder: "e.g. VIP Group, Twitter Event",
+      generateBtn: "Generate New Invite",
+      tableCode: "Access Code",
+      tableLabel: "Label / Category",
+      tableStatus: "Status",
+      tableCreated: "Created",
+      tableActions: "Actions",
+      newlyGenerated: "Newly Generated Access Code",
+      copyBtn: "Copy Code",
+      active: "Active",
+      disabled: "Disabled",
+      disableAction: "Disable Access",
+      enableAction: "Re-Enable"
     },
     assistant: {
       title: "AlphaBot AI",
@@ -95,6 +114,24 @@ export const translations = {
       noHighlights: "暂无已记录的业绩亮点。",
       verified: "交易台已核实",
       returnLabel: "收益率"
+    },
+    invites: {
+      title: "权限管理",
+      description: "为私有成员生成和管理访问邀请码。",
+      label: "分组 / 名称",
+      labelPlaceholder: "例如：VIP群组、推特推广",
+      generateBtn: "生成新邀请码",
+      tableCode: "访问码",
+      tableLabel: "标签 / 类别",
+      tableStatus: "状态",
+      tableCreated: "创建时间",
+      tableActions: "操作",
+      newlyGenerated: "新生成的访问码",
+      copyBtn: "复制号码",
+      active: "活跃",
+      disabled: "已禁用",
+      disableAction: "禁用权限",
+      enableAction: "重新启用"
     },
     assistant: {
       title: "AlphaBot AI",

@@ -1,3 +1,4 @@
+
 export type Role = 'admin' | 'member';
 
 export interface UserSession {
@@ -55,7 +56,8 @@ export interface Highlight {
 export interface Invite {
   id: string;
   code: string;
-  role: 'member';
+  label?: string;
+  role: 'member' | 'admin';
   status: 'active' | 'disabled';
   createdAt: any;
   usedCount: number;

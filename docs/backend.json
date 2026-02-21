@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Invite": {
@@ -10,472 +11,87 @@
           "type": "string",
           "description": "Unique identifier for the Invite entity."
         },
-        "codeHash": {
+        "code": {
           "type": "string",
-          "description": "Cryptographic hash of the invitation code, used for secure validation during member login. The plain code is never stored."
+          "description": "The plain text invitation code."
+        },
+        "label": {
+          "type": "string",
+          "description": "A descriptive label or category for the invite (e.g., 'VIP Group', 'Twitter Promo')."
         },
         "role": {
           "type": "string",
-          "description": "The role assigned to a user upon successful use of this invite code. For MVP, this is always 'member'. (Relationship: Invite 1:N User)",
-          "items": {
-            "type": "string"
-          }
+          "description": "The role assigned to a user upon successful use of this invite code.",
+          "enum": ["member", "admin"]
         },
         "status": {
           "type": "string",
-          "description": "Current status of the invitation code (e.g., active, disabled).",
-          "items": {
-            "type": "string"
-          }
+          "description": "Current status of the invitation code.",
+          "enum": ["active", "disabled"]
         },
         "createdAt": {
           "type": "string",
           "description": "Timestamp when the invitation code was created.",
           "format": "date-time"
         },
-        "expiresAt": {
-          "type": "string",
-          "description": "Optional timestamp when the invitation code will expire, making it unusable.",
-          "format": "date-time"
-        },
-        "maxUses": {
-          "type": "number",
-          "description": "Optional maximum number of times this invitation code can be used before becoming inactive."
-        },
         "usedCount": {
           "type": "number",
-          "description": "Number of times this invitation code has been successfully used by members."
+          "description": "Number of times this invitation code has been used."
         }
       },
       "required": [
         "id",
-        "codeHash",
+        "code",
         "role",
         "status",
         "createdAt",
         "usedCount"
       ]
     },
-    "TradeIdea": {
+    "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "TradeIdea",
+      "title": "User",
       "type": "object",
-      "description": "Represents a research-based trade idea for either stocks or options, posted by an admin.",
+      "description": "Represents a user profile within the AlphaLink system.",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
-          "description": "Unique identifier for the TradeIdea entity."
-        },
-        "instrumentType": {
-          "type": "string",
-          "description": "Type of financial instrument this trade idea pertains to.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "note": {
-          "type": "string",
-          "description": "Raw notes or detailed description provided by the creator of the trade idea."
-        },
-        "aiSummaryBullets": {
-          "type": "array",
-          "description": "AI-generated summary of the trade idea in concise bullet points.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "riskLine": {
-          "type": "string",
-          "description": "AI-generated concise statement about the primary risk of the trade idea."
-        },
-        "payoffHint": {
-          "type": "string",
-          "description": "AI-generated hint about the potential payoff profile of the trade idea."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the trade idea was created.",
-          "format": "date-time"
-        },
-        "createdBy": {
-          "type": "string",
-          "description": "Role of the user who created the trade idea (always 'admin'). (Relationship: Admin 1:N TradeIdea)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "likeCount": {
-          "type": "number",
-          "description": "Total number of likes this trade idea has received from members and admins."
-        },
-        "ticker": {
-          "type": "string",
-          "description": "Stock ticker symbol (relevant only if instrumentType is 'STOCK')."
-        },
-        "direction": {
-          "type": "string",
-          "description": "Intended direction of the stock (LONG or SHORT) (relevant only if instrumentType is 'STOCK').",
-          "items": {
-            "type": "string"
-          }
-        },
-        "action": {
-          "type": "string",
-          "description": "Proposed action for the stock (BUY, SELL, or HOLD) (relevant only if instrumentType is 'STOCK').",
-          "items": {
-            "type": "string"
-          }
-        },
-        "timeframe": {
-          "type": "string",
-          "description": "Intended timeframe for the stock trade (SCALP, SWING, or LONG) (relevant only if instrumentType is 'STOCK').",
-          "items": {
-            "type": "string"
-          }
-        },
-        "entryPlan": {
-          "type": "string",
-          "description": "Optional plan or conditions for entering the stock trade."
-        },
-        "stopLoss": {
-          "type": "string",
-          "description": "Optional stop loss level or criteria for the stock trade."
-        },
-        "invalidation": {
-          "type": "string",
-          "description": "Optional condition that would invalidate the stock trade idea."
-        },
-        "underlying": {
-          "type": "string",
-          "description": "Underlying asset for the options trade (relevant only if instrumentType is 'OPTIONS')."
-        },
-        "strategyType": {
-          "type": "string",
-          "description": "Type of options strategy used (e.g., SINGLE, VERTICAL_SPREAD) (relevant only if instrumentType is 'OPTIONS').",
-          "items": {
-            "type": "string"
-          }
-        },
-        "legs": {
-          "type": "array",
-          "description": "Array of individual option legs that compose the options strategy (relevant only if instrumentType is 'OPTIONS').",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "instrumentType",
-        "note",
-        "aiSummaryBullets",
-        "riskLine",
-        "payoffHint",
-        "createdAt",
-        "createdBy",
-        "likeCount"
-      ]
-    },
-    "TradeIdeaComment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "TradeIdeaComment",
-      "type": "object",
-      "description": "Represents a comment made by a user on a specific trade idea.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the TradeIdeaComment entity."
-        },
-        "tradeIdeaId": {
-          "type": "string",
-          "description": "Reference to the TradeIdea this comment belongs to. (Relationship: TradeIdea 1:N TradeIdeaComment)"
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the user who posted the comment. This ID comes from the authentication system. (Relationship: User 1:N TradeIdeaComment)"
+          "description": "Unique user ID from Firebase Auth."
         },
         "role": {
           "type": "string",
-          "description": "Role of the user who posted the comment ('member' or 'admin').",
-          "items": {
-            "type": "string"
-          }
+          "description": "Assigned role of the user.",
+          "enum": ["admin", "member"]
         },
-        "text": {
+        "accessCode": {
           "type": "string",
-          "description": "The textual content of the comment."
+          "description": "The code used to gain access."
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp when the comment was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
           "format": "date-time"
         }
       },
-      "required": [
-        "id",
-        "tradeIdeaId",
-        "userId",
-        "role",
-        "text",
-        "createdAt"
-      ]
-    },
-    "TradeIdeaLike": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "TradeIdeaLike",
-      "type": "object",
-      "description": "Represents a 'like' action performed by a user on a specific trade idea.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the TradeIdeaLike entity. Often synonymous with 'userId' for a single like per user per idea."
-        },
-        "tradeIdeaId": {
-          "type": "string",
-          "description": "Reference to the TradeIdea that was liked. (Relationship: TradeIdea 1:N TradeIdeaLike)"
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the user who liked the trade idea. This ID comes from the authentication system. (Relationship: User 1:N TradeIdeaLike)"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the like was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "tradeIdeaId",
-        "userId",
-        "createdAt"
-      ]
-    },
-    "Highlight": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Highlight",
-      "type": "object",
-      "description": "Represents a performance or notable event highlight, curated by administrators.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Highlight entity."
-        },
-        "title": {
-          "type": "string",
-          "description": "A brief title for the highlight entry."
-        },
-        "tickerOrUnderlying": {
-          "type": "string",
-          "description": "The stock ticker symbol or underlying asset related to this highlight."
-        },
-        "returnPct": {
-          "type": "number",
-          "description": "The percentage return or performance metric associated with the highlight."
-        },
-        "date": {
-          "type": "string",
-          "description": "The specific date when the highlight occurred, in ISO YYYY-MM-DD format.",
-          "format": "date"
-        },
-        "screenshotURL": {
-          "type": "string",
-          "description": "Optional URL to an image or screenshot illustrating the highlight.",
-          "format": "uri"
-        },
-        "description": {
-          "type": "string",
-          "description": "A detailed description or context for the highlight."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the highlight entry was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "title",
-        "tickerOrUnderlying",
-        "returnPct",
-        "date",
-        "description",
-        "createdAt"
-      ]
-    },
-    "ChatMessage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ChatMessage",
-      "type": "object",
-      "description": "Represents a single message within a user's chat history with the AlphaBot AI assistant.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ChatMessage entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the user who owns this chat message. This ID comes from the authentication system. (Relationship: User 1:N ChatMessage)"
-        },
-        "role": {
-          "type": "string",
-          "description": "Role of the message sender in the chat ('user' for client, 'assistant' for AI).",
-          "items": {
-            "type": "string"
-          }
-        },
-        "content": {
-          "type": "string",
-          "description": "The textual content of the chat message."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the chat message was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "role",
-        "content",
-        "createdAt"
-      ]
+      "required": ["uid", "role"]
     }
   },
   "auth": {
     "providers": [
-      "password",
       "anonymous"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profile information, including their assigned role ('admin' or 'member'). This is the source of truth for user roles. The 'userId' parameter matches the Firebase Authentication UID.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user, corresponding to their Firebase Authentication UID."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/invites/{inviteId}",
-        "definition": {
-          "entityName": "Invite",
-          "schema": {
-            "$ref": "#/backend/entities/Invite"
-          },
-          "description": "Stores invitation codes (hashed) used for member registration. This collection is exclusively accessible by administrators for creation, listing, disabling, and tracking usage. Authorization is managed by checking the requesting user's role.",
-          "params": [
-            {
-              "name": "inviteId",
-              "description": "The unique identifier for an invitation code."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/tradeIdeas/{tradeIdeaId}",
-        "definition": {
-          "entityName": "TradeIdea",
-          "schema": {
-            "$ref": "#/backend/entities/TradeIdea"
-          },
-          "description": "Stores research-based trade ideas created by administrators. All documents in this collection share the same security posture (admin write, member read). Includes denormalized 'createdBy' field for clarity.",
-          "params": [
-            {
-              "name": "tradeIdeaId",
-              "description": "The unique identifier for a trade idea."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/tradeIdeas/{tradeIdeaId}/comments/{commentId}",
-        "definition": {
-          "entityName": "TradeIdeaComment",
-          "schema": {
-            "$ref": "#/backend/entities/TradeIdeaComment"
-          },
-          "description": "Stores comments made by users on specific trade ideas. Includes denormalized 'userId' and 'role' of the commenter for authorization independence, allowing atomic write operations without parent checks.",
-          "params": [
-            {
-              "name": "tradeIdeaId",
-              "description": "The unique identifier of the parent trade idea."
-            },
-            {
-              "name": "commentId",
-              "description": "The unique identifier for a comment."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/tradeIdeas/{tradeIdeaId}/likes/{userId}",
-        "definition": {
-          "entityName": "TradeIdeaLike",
-          "schema": {
-            "$ref": "#/backend/entities/TradeIdeaLike"
-          },
-          "description": "Represents a 'like' action by a user on a trade idea. The document ID is the 'userId' of the liker, ensuring one like per user per idea and simplifying authorization checks. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "tradeIdeaId",
-              "description": "The unique identifier of the parent trade idea."
-            },
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who liked the trade idea, also serving as the document ID."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/highlights/{highlightId}",
-        "definition": {
-          "entityName": "Highlight",
-          "schema": {
-            "$ref": "#/backend/entities/Highlight"
-          },
-          "description": "Stores curated performance and notable event highlights. This collection is exclusively for administrators to create, read, update, and delete entries, while members can only read.",
-          "params": [
-            {
-              "name": "highlightId",
-              "description": "The unique identifier for a highlight entry."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/messages/{messageId}",
-        "definition": {
-          "entityName": "ChatMessage",
-          "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
-          },
-          "description": "Stores individual chat messages for a user's conversation with the AlphaBot AI. This path enforces path-based ownership, ensuring users can only read and write their own messages. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns this chat history."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique identifier for a chat message within a user's history."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure for AlphaLink v2 is designed with a strong emphasis on Authorization Independence, Structural Segregation, and Path-Based Ownership to ensure robust security rules and efficient queries. \n\nAuthorization Independence is primarily achieved through denormalization. For instance, in the 'tradeIdeaComments' subcollection, each comment document includes the 'userId' and 'role' of the commenter directly. This eliminates the need for expensive and complex 'get()' calls in security rules to check the parent 'TradeIdea' or the 'User' document to validate the commenter's identity or role. Similarly, in the 'tradeIdeaLikes' subcollection, the document ID itself is the 'userId' of the liker, and 'userId' is also denormalized within the document, ensuring that like operations are atomic and independently verifiable. For 'chatMessages', the 'userId' is explicitly part of the path ('/users/{userId}/messages/{messageId}') and also denormalized into the document, making authorization entirely dependent on the request's `uid` matching the path and document `userId`.\n\nFor global roles (e.g., 'admin'), the structure relies on a 'role' field within the user's profile document (`/users/{userId}`). While this involves a single 'get()' call in security rules (e.g., `get(/users/$(request.auth.uid)).data.role == 'admin'`), this is an acceptable and common pattern for primary role checks, as it operates on the requesting user's own data rather than a hierarchical dependency on a parent data document. This approach minimizes complexity compared to complex data-driven hierarchical authorization.\n\nQuery Adequacy Predictability (QAPs) is supported through structural segregation and consistent security postures. Collections like '/tradeIdeas' and '/highlights' maintain a homogeneous security model where all documents share the same access requirements (admin write, member read). This allows for simple and performant list queries, as security rules can be applied uniformly across the entire collection without needing to filter out unauthorized documents post-query. The '/invites' collection also adheres to this, being exclusively accessible by administrators. For user-specific data like chat history ('/users/{userId}/messages'), the path-based ownership inherently limits list queries to the authenticated user's data, ensuring QAPs."
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "User profiles and roles."
+    },
+    "/invites/{inviteId}": {
+      "schema": { "$ref": "#/backend/entities/Invite" },
+      "description": "Invitation codes for members."
+    }
   }
 }
