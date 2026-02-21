@@ -114,13 +114,12 @@ export default function InvitesPage() {
   const wipeMemberData = async (memberUid: string, inviteCode: string) => {
     if (!firestore || isWiping) return;
     
-    // Observability Log
     console.log("WIPE_MEMBER_DATA_START", { memberUid, inviteCode });
 
     setIsWiping(memberUid);
     toast({ 
       title: "Initiating Global Wipe...", 
-      description: "Removing profile and all research notes from terminal." 
+      description: "Removing profile, research notes, and performance highlights." 
     });
 
     try {
@@ -129,22 +128,35 @@ export default function InvitesPage() {
       // 1. Delete User Document
       batch.delete(doc(firestore, "users", memberUid));
 
-      // 2. Find and delete all trade ideas by this user
+      // 2. Query and delete all trade ideas
       const ideasRef = collection(firestore, "tradeIdeas");
-      const q = query(ideasRef, where("userId", "==", memberUid));
-      const ideasSnap = await getDocs(q);
+      const ideasQ = query(ideasRef, where("userId", "==", memberUid));
+      const ideasSnap = await getDocs(ideasQ);
       
-      console.log(`Found ${ideasSnap.size} research notes to wipe for ${memberUid}`);
+      ideasSnap.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+
+      // 3. Query and delete all highlights (Performance)
+      const highlightsRef = collection(firestore, "highlights");
+      const highlightsQ = query(highlightsRef, where("userId", "==", memberUid));
+      const highlightsSnap = await getDocs(highlightsQ);
       
-      ideasSnap.forEach((ideaDoc) => {
-        batch.delete(doc(firestore, "tradeIdeas", ideaDoc.id));
+      highlightsSnap.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
       });
 
       await batch.commit();
-      console.log("WIPE_SUCCESS", { memberUid });
+      
+      console.log("WIPE_SUCCESS", { 
+        memberUid, 
+        notesDeleted: ideasSnap.size, 
+        highlightsDeleted: highlightsSnap.size 
+      });
+
       toast({ 
         title: "Wipe Complete", 
-        description: `Member and ${ideasSnap.size} research notes have been purged.` 
+        description: `Purged: Profile, ${ideasSnap.size} research notes, and ${highlightsSnap.size} highlights.` 
       });
     } catch (err: any) {
       console.error("WIPE_FAILED", err);
