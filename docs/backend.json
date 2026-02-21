@@ -51,6 +51,18 @@
           "type": "string",
           "enum": ["admin", "member"]
         },
+        "displayName": {
+          "type": "string",
+          "description": "The full name provided by the user during onboarding."
+        },
+        "contactType": {
+          "type": "string",
+          "enum": ["email", "other"]
+        },
+        "contactInfo": {
+          "type": "string",
+          "description": "The specific email or contact handle provided."
+        },
         "accessCode": {
           "type": "string"
         },

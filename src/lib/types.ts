@@ -61,3 +61,14 @@ export interface Invite {
   createdAt: any;
   usedCount: number;
 }
+
+export interface UserProfile {
+  uid: string;
+  role: Role;
+  displayName?: string;
+  contactType?: 'email' | 'other';
+  contactInfo?: string;
+  accessCode: string;
+  createdAt: any;
+  updatedAt: any;
+}

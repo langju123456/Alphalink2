@@ -108,9 +108,11 @@ export default function InvitesPage() {
   const deleteInvite = async (id: string) => {
     if (!confirm(t.invites.confirmDelete)) return
     try {
+      // Direct deletion from firestore
       await deleteDoc(doc(firestore, "invites", id))
-      toast({ title: t.common.success })
+      toast({ title: t.common.success, description: "Invitation code purged." })
     } catch (err: any) {
+      console.error(err)
       toast({ title: "Error deleting", variant: "destructive" })
     }
   }
@@ -216,6 +218,8 @@ export default function InvitesPage() {
             <tbody>
               {isInvitesLoading ? (
                 <tr><td colSpan={5} className="p-10 text-center italic">Loading terminal data...</td></tr>
+              ) : invites?.length === 0 ? (
+                <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">No active invitations found.</td></tr>
               ) : invites?.map((inv: any) => (
                 <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors group">
                   <td className="p-4 font-code font-bold text-foreground">{inv.code}</td>
@@ -244,7 +248,9 @@ export default function InvitesPage() {
                       <Button size="sm" variant="ghost" onClick={() => toggleInvite(inv.id, inv.status)} className="text-[10px] uppercase">
                         {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteInvite(inv.id)} className="text-rose-500 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => deleteInvite(inv.id)} className="text-rose-500 hover:bg-rose-500/10">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </td>
                 </tr>

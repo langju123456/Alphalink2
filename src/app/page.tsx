@@ -1,29 +1,54 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ShieldAlert, TrendingUp, Cpu, Lock, Loader2 } from "lucide-react"
+import { 
+  TrendingUp, 
+  Cpu, 
+  Lock, 
+  Loader2, 
+  UserCircle, 
+  Mail, 
+  MessageSquare,
+  ArrowRight,
+  ShieldCheck
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useFirebase, useUser } from "@/firebase"
 import { signInAnonymously, signOut } from "firebase/auth"
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { Role } from "@/lib/types"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const ADMIN_BOOTSTRAP_CODE = 'ALPHALINK_ADMIN_888';
 
 export default function LandingPage() {
+  const [step, setStep] = useState<'login' | 'profile'>('login')
   const [code, setCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Profile Form State
+  const [displayName, setDisplayName] = useState("")
+  const [contactType, setContactType] = useState<'email' | 'other'>('email')
+  const [contactInfo, setContactInfo] = useState("")
+  const [assignedRole, setAssignedRole] = useState<Role | null>(null)
+
   const router = useRouter()
   const { toast } = useToast()
   const { auth, firestore } = useFirebase()
-  const { user, isUserLoading } = useUser()
+  const { isUserLoading } = useUser()
 
-  const handleLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (isLoading) return
     setIsLoading(true)
 
@@ -49,22 +74,8 @@ export default function LandingPage() {
       }
 
       if (role) {
-        await setDoc(doc(firestore, "users", userId), {
-          uid: userId,
-          role: role,
-          accessCode: finalCode,
-          updatedAt: serverTimestamp(),
-          createdAt: serverTimestamp()
-        }, { merge: true })
-
-        toast({
-          title: "Access Granted",
-          description: `Welcome. Authenticated as ${role.toUpperCase()}.`,
-        })
-        
-        setTimeout(() => {
-          router.push("/dashboard/feed")
-        }, 500)
+        setAssignedRole(role)
+        setStep('profile')
       } else {
         await signOut(auth)
         toast({
@@ -75,10 +86,44 @@ export default function LandingPage() {
       }
     } catch (err: any) {
       console.error("Login Error:", err)
-      if (auth.currentUser) await signOut(auth)
       toast({
         title: "Connection Error",
         description: "Could not verify credentials.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCompleteProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!auth.currentUser || !assignedRole || isLoading) return
+    setIsLoading(true)
+
+    try {
+      const userId = auth.currentUser.uid
+      await setDoc(doc(firestore, "users", userId), {
+        uid: userId,
+        role: assignedRole,
+        displayName: displayName.trim(),
+        contactType,
+        contactInfo: contactInfo.trim(),
+        accessCode: code.trim().toUpperCase(),
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+      }, { merge: true })
+
+      toast({
+        title: "Setup Complete",
+        description: `Welcome to the AlphaLink Terminal.`,
+      })
+      
+      router.push("/dashboard/feed")
+    } catch (err) {
+      toast({
+        title: "Save Error",
+        description: "Could not finalize your profile.",
         variant: "destructive"
       })
     } finally {
@@ -102,45 +147,112 @@ export default function LandingPage() {
             <TrendingUp className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-4xl font-headline font-bold tracking-tight text-white">AlphaLink v2</h1>
-          <p className="text-muted-foreground">Private Community Terminal Access</p>
+          <p className="text-muted-foreground uppercase text-[10px] tracking-[0.2em] font-bold">Private Community Terminal</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 text-left py-8">
-          <div className="flex gap-4 p-4 terminal-card bg-secondary/20">
-            <Cpu className="w-5 h-5 text-primary shrink-0" />
-            <div>
-              <p className="font-semibold text-sm">Institutional Desk</p>
-              <p className="text-xs text-muted-foreground">Real-time market insights from professional desks.</p>
+        {step === 'login' ? (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex gap-4 p-4 terminal-card bg-secondary/20">
+              <Cpu className="w-5 h-5 text-primary shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold text-sm">Terminal Security</p>
+                <p className="text-xs text-muted-foreground">Encryption active. Input unique access key to initialize.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  placeholder="Enter Terminal Access Code"
+                  className="pl-10 h-12 bg-secondary border-border focus:ring-primary uppercase font-code tracking-widest"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full h-12 font-bold uppercase tracking-wider bg-primary hover:bg-primary/90"
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {isLoading ? "Validating..." : "Initialize Session"}
+              </Button>
+            </form>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="p-6 terminal-card bg-secondary/10 border-primary/20">
+              <div className="flex items-center gap-3 mb-6">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-bold text-white text-left">Onboarding Profile</h2>
+              </div>
+
+              <form onSubmit={handleCompleteProfile} className="space-y-5 text-left">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Full Name</label>
+                  <div className="relative">
+                    <UserCircle className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="e.g. John Doe"
+                      className="pl-10 bg-secondary"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Contact Method</label>
+                  <Select value={contactType} onValueChange={(v: any) => setContactType(v)}>
+                    <SelectTrigger className="bg-secondary">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">Official Email</SelectItem>
+                      <SelectItem value="other">Social Handle / Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
+                    {contactType === 'email' ? 'Email Address' : 'Contact Handle'}
+                  </label>
+                  <div className="relative">
+                    {contactType === 'email' ? (
+                      <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Input
+                      placeholder={contactType === 'email' ? "email@example.com" : "@username or Discord ID"}
+                      className="pl-10 bg-secondary"
+                      value={contactInfo}
+                      onChange={(e) => setContactInfo(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 font-bold uppercase tracking-wider bg-primary"
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+                  Finalize Access
+                </Button>
+              </form>
             </div>
           </div>
-        </div>
-
-        <div className="space-y-4">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="password"
-                placeholder="Enter Terminal Access Code"
-                className="pl-10 h-12 bg-secondary border-border focus:ring-primary uppercase"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
-            </div>
-            <Button 
-              type="submit" 
-              className="w-full h-12 font-bold uppercase tracking-wider bg-primary hover:bg-primary/90"
-              disabled={isLoading}
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {isLoading ? "Validating Terminal..." : "Initialize Session"}
-            </Button>
-          </form>
-        </div>
+        )}
 
         <p className="text-[10px] text-muted-foreground uppercase tracking-widest pt-12">
-          Secured Alpha Connection • Encryption Active
+          Secured Alpha Connection • Layer 7 Encryption
         </p>
       </div>
     </div>
