@@ -14,15 +14,13 @@ import {
   Award,
   Moon,
   Sun,
-  Languages,
-  Bug
+  Languages
 } from "lucide-react"
 import { useAuth, useUser, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, getFirestore } from "firebase/firestore"
 import { Button } from "./ui/button"
 import { useTheme } from "next-themes"
 import { useLanguage } from "./language-provider"
-import { getIdTokenResult } from "firebase/auth"
 
 export function DashboardNav() {
   const pathname = usePathname()
@@ -31,7 +29,6 @@ export function DashboardNav() {
   const { user } = useUser()
   const { theme, setTheme } = useTheme()
   const { language, setLanguage, t } = useLanguage()
-  const [claims, setClaims] = useState<any>(null)
   
   const firestore = getFirestore()
   
@@ -42,12 +39,6 @@ export function DashboardNav() {
   
   const { data: userProfile } = useDoc(userDocRef)
   const isAdmin = userProfile?.role === "admin"
-
-  useEffect(() => {
-    if (user) {
-      getIdTokenResult(user).then(res => setClaims(res.claims))
-    }
-  }, [user])
 
   const links = [
     { href: "/dashboard/feed", icon: LayoutGrid, label: t.nav.marketFeed },
@@ -95,20 +86,6 @@ export function DashboardNav() {
       </nav>
 
       <div className="p-4 border-t border-border mt-auto space-y-2">
-        {isAdmin && (
-          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-md">
-            <div className="flex items-center gap-2 mb-2 text-rose-400">
-              <Bug className="w-3 h-3" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Debug Console</span>
-            </div>
-            <div className="space-y-1 text-[9px] font-code break-all text-muted-foreground">
-              <p><span className="text-rose-400">UID:</span> {user?.uid}</p>
-              <p><span className="text-rose-400">ROLE:</span> {userProfile?.role}</p>
-              <p><span className="text-rose-400">CLAIMS:</span> {JSON.stringify(claims)}</p>
-            </div>
-          </div>
-        )}
-
         <div className="flex items-center justify-between px-4 py-1">
            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.nav.theme}</p>
            <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="p-1.5 rounded-md hover:bg-secondary/50 text-muted-foreground transition-colors">
