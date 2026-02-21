@@ -1,15 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { storage } from "@/lib/storage"
-import { Highlight } from "@/lib/types"
+import { useState } from "react"
+import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
+import { collection, query, orderBy, doc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore"
 import { 
   Award, 
-  TrendingUp, 
   Calendar, 
-  ArrowUpRight,
   Plus,
-  Trash2
+  Trash2,
+  Loader2,
+  TrendingUp
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { 
@@ -23,11 +23,27 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { format } from "date-fns"
 
 export default function HighlightsPage() {
-  const [highlights, setHighlights] = useState<Highlight[]>([])
-  const [session, setSession] = useState<any>(null)
+  const { firestore } = useFirebase()
+  const { user } = useUser()
   const { toast } = useToast()
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null
+    return doc(firestore, "users", user.uid)
+  }, [user, firestore])
+  
+  const { data: userProfile } = useDoc(userDocRef)
+  const isAdmin = userProfile?.role === "admin"
+
+  const highlightsQuery = useMemoFirebase(() => {
+    if (!firestore) return null
+    return query(collection(firestore, "highlights"), orderBy("createdAt", "desc"))
+  }, [firestore])
+
+  const { data: highlights, isLoading } = useCollection(highlightsQuery)
 
   // Form State
   const [title, setTitle] = useState("")
@@ -36,33 +52,46 @@ export default function HighlightsPage() {
   const [date, setDate] = useState("")
   const [desc, setDesc] = useState("")
   const [open, setOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    setHighlights(storage.getHighlights())
-    setSession(storage.getSession())
-  }, [])
-
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newH: Highlight = {
-      id: crypto.randomUUID(),
-      title,
-      ticker: ticker.toUpperCase(),
-      returnPct: Number(returnPct),
-      date,
-      description: desc,
-      createdAt: Date.now()
+    if (!firestore) return
+    
+    setIsSubmitting(true)
+    const highlightId = crypto.randomUUID()
+    
+    try {
+      await setDoc(doc(firestore, "highlights", highlightId), {
+        id: highlightId,
+        title,
+        tickerOrUnderlying: ticker.toUpperCase(),
+        returnPct: Number(returnPct),
+        date,
+        description: desc,
+        createdAt: serverTimestamp()
+      })
+      
+      setOpen(false)
+      setTitle(""); setTicker(""); setReturnPct(""); setDate(""); setDesc("")
+      toast({ title: "Highlight Published" })
+    } catch (err: any) {
+      console.error(err)
+      toast({ title: "Error", description: "Failed to publish highlight.", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
     }
-    storage.saveHighlight(newH)
-    setHighlights(storage.getHighlights())
-    setOpen(false)
-    toast({ title: "Highlight Published" })
   }
 
-  const deleteHighlight = (id: string) => {
-    storage.deleteHighlight(id)
-    setHighlights(storage.getHighlights())
-    toast({ title: "Highlight Removed" })
+  const handleDelete = async (id: string) => {
+    if (!firestore) return
+    try {
+      await deleteDoc(doc(firestore, "highlights", id))
+      toast({ title: "Highlight Removed" })
+    } catch (err) {
+      console.error(err)
+      toast({ title: "Error", description: "Failed to remove highlight.", variant: "destructive" })
+    }
   }
 
   return (
@@ -72,7 +101,7 @@ export default function HighlightsPage() {
           <h1 className="text-3xl font-headline font-bold text-white">Alpha Desk Performance</h1>
           <p className="text-muted-foreground text-sm">Verified trade results and community win highlights.</p>
         </div>
-        {session?.role === "admin" && (
+        {isAdmin && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90 font-bold gap-2">
@@ -93,7 +122,9 @@ export default function HighlightsPage() {
                 <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-secondary" required />
                 <Textarea placeholder="Description..." value={desc} onChange={e => setDesc(e.target.value)} className="bg-secondary" required />
                 <DialogFooter>
-                  <Button type="submit" className="w-full bg-primary font-bold uppercase">Publish to Wall of Fame</Button>
+                  <Button type="submit" disabled={isSubmitting} className="w-full bg-primary font-bold uppercase">
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Publish to Wall of Fame"}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -102,12 +133,21 @@ export default function HighlightsPage() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {highlights.map((h) => (
+        {isLoading ? (
+          <div className="col-span-full py-20 flex justify-center">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+        ) : !highlights || highlights.length === 0 ? (
+          <div className="col-span-full py-20 text-center terminal-card bg-secondary/10 flex flex-col items-center justify-center space-y-4">
+            <TrendingUp className="w-12 h-12 text-muted-foreground opacity-20" />
+            <p className="text-muted-foreground font-semibold">No performance highlights documented yet.</p>
+          </div>
+        ) : highlights.map((h: any) => (
           <div key={h.id} className="terminal-card bg-secondary/20 relative group">
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 rounded bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <span className="font-headline font-bold text-primary">{h.ticker}</span>
+                  <span className="font-headline font-bold text-primary">{h.tickerOrUnderlying}</span>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-headline font-bold text-emerald-400">+{h.returnPct}%</p>
@@ -127,9 +167,9 @@ export default function HighlightsPage() {
                 </div>
               </div>
             </div>
-            {session?.role === "admin" && (
+            {isAdmin && (
               <button 
-                onClick={() => deleteHighlight(h.id)}
+                onClick={() => handleDelete(h.id)}
                 className="absolute top-2 right-2 p-2 bg-rose-500/10 text-rose-500 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 hover:text-white"
               >
                 <Trash2 className="w-4 h-4" />

@@ -1,23 +1,30 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { storage } from "@/lib/storage"
-import { TradeIdea } from "@/lib/types"
+import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
+import { collection, query, orderBy, doc } from "firebase/firestore"
 import { TradeIdeaCard } from "@/components/trade-idea-card"
 import { PostTradeIdea } from "@/components/post-trade-idea"
-import { Search, Filter, TrendingUp } from "lucide-react"
+import { Search, TrendingUp, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
 export default function FeedPage() {
-  const [ideas, setIdeas] = useState<TradeIdea[]>([])
-  const [session, setSession] = useState<any>(null)
+  const { firestore } = useFirebase()
+  const { user } = useUser()
 
-  useEffect(() => {
-    setIdeas(storage.getIdeas())
-    setSession(storage.getSession())
-  }, [])
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null
+    return doc(firestore, "users", user.uid)
+  }, [user, firestore])
+  
+  const { data: userProfile } = useDoc(userDocRef)
+  const isAdmin = userProfile?.role === "admin"
 
-  const refresh = () => setIdeas(storage.getIdeas())
+  const tradeIdeasQuery = useMemoFirebase(() => {
+    if (!firestore) return null
+    return query(collection(firestore, "tradeIdeas"), orderBy("createdAt", "desc"))
+  }, [firestore])
+
+  const { data: ideas, isLoading } = useCollection(tradeIdeasQuery)
 
   return (
     <div className="space-y-8 pb-20">
@@ -26,7 +33,7 @@ export default function FeedPage() {
           <h1 className="text-3xl font-headline font-bold text-white mb-2">Market Intelligence</h1>
           <p className="text-muted-foreground text-sm">Real-time research notes from the AlphaLink institutional desk.</p>
         </div>
-        {session?.role === "admin" && <PostTradeIdea onSuccess={refresh} />}
+        {isAdmin && <PostTradeIdea />}
       </header>
 
       <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -42,7 +49,11 @@ export default function FeedPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {ideas.length === 0 ? (
+        {isLoading ? (
+          <div className="py-20 flex justify-center">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+        ) : !ideas || ideas.length === 0 ? (
           <div className="py-20 text-center terminal-card bg-secondary/10 flex flex-col items-center justify-center space-y-4">
             <TrendingUp className="w-12 h-12 text-muted-foreground opacity-20" />
             <div>
@@ -52,7 +63,7 @@ export default function FeedPage() {
           </div>
         ) : (
           ideas.map(idea => (
-            <TradeIdeaCard key={idea.id} idea={idea} />
+            <TradeIdeaCard key={idea.id} idea={idea as any} />
           ))
         )}
       </div>

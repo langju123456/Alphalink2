@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useFirebase, useUser, useDoc, useMemoFirebase } from "@/firebase"
+import { doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
@@ -20,15 +22,23 @@ import {
   SelectValue 
 } from "./ui/select"
 import { Plus, Sparkles, Loader2, ArrowRight } from "lucide-react"
-import { storage } from "@/lib/storage"
 import { summarizeTradeIdea, SummarizeTradeIdeaInput } from "@/ai/flows/summarize-trade-idea"
 import { useToast } from "@/hooks/use-toast"
-import { InstrumentType, TradeIdea, OptionLeg } from "@/lib/types"
+import { InstrumentType, OptionLeg } from "@/lib/types"
 
-export function PostTradeIdea({ onSuccess }: { onSuccess: () => void }) {
+export function PostTradeIdea() {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const { firestore } = useFirebase()
+  const { user } = useUser()
   const { toast } = useToast()
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null
+    return doc(firestore, "users", user.uid)
+  }, [user, firestore])
+  
+  const { data: userProfile } = useDoc(userDocRef)
 
   // Form State
   const [type, setType] = useState<InstrumentType>("STOCK")
@@ -66,6 +76,7 @@ export function PostTradeIdea({ onSuccess }: { onSuccess: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!firestore || !userProfile) return
     setIsLoading(true)
 
     try {
@@ -92,15 +103,16 @@ export function PostTradeIdea({ onSuccess }: { onSuccess: () => void }) {
       // Call AI Summarize Flow
       const aiResponse = await summarizeTradeIdea(summaryInput)
 
-      const newIdea: TradeIdea = {
-        id: crypto.randomUUID(),
+      const ideaId = crypto.randomUUID()
+      const ideaData = {
+        id: ideaId,
         instrumentType: type,
         note,
         aiSummaryBullets: aiResponse.aiSummaryBullets,
         riskLine: aiResponse.riskLine,
         payoffHint: aiResponse.payoffHint,
-        createdAt: Date.now(),
-        createdBy: "Admin",
+        createdAt: serverTimestamp(),
+        createdBy: userProfile.role === 'admin' ? 'Admin' : 'Member',
         likeCount: 0,
         ...(type === "STOCK" ? {
           ticker: ticker.toUpperCase(),
@@ -113,20 +125,20 @@ export function PostTradeIdea({ onSuccess }: { onSuccess: () => void }) {
         } : {
           underlying: underlying.toUpperCase(),
           strategyType: strategy,
-          legs
+          legs: legs.map(l => ({ ...l, strike: Number(l.strike), contracts: Number(l.contracts) }))
         })
       }
 
-      storage.saveIdea(newIdea)
+      await setDoc(doc(firestore, "tradeIdeas", ideaId), ideaData)
+      
       setOpen(false)
-      onSuccess()
       toast({ title: "Trade Idea Published", description: "AI research summary generated and posted to feed." })
       
       // Reset
       setNote(""); setTicker(""); setUnderlying("")
     } catch (err) {
       console.error(err)
-      toast({ title: "Error", description: "Failed to generate AI summary. Check your inputs.", variant: "destructive" })
+      toast({ title: "Error", description: "Failed to generate AI summary or save idea.", variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
