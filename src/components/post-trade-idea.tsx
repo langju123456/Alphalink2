@@ -1,8 +1,9 @@
+
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useFirebase, useUser, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, setDoc, serverTimestamp } from "firebase/firestore"
+import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
@@ -21,12 +22,17 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "./ui/select"
-import { Plus, Sparkles, Loader2, ArrowRight } from "lucide-react"
+import { Plus, Sparkles, Loader2, ArrowRight, Edit2 } from "lucide-react"
 import { summarizeTradeIdea, SummarizeTradeIdeaInput } from "@/ai/flows/summarize-trade-idea"
 import { useToast } from "@/hooks/use-toast"
-import { InstrumentType, OptionLeg } from "@/lib/types"
+import { InstrumentType, OptionLeg, TradeIdea } from "@/lib/types"
 
-export function PostTradeIdea() {
+interface PostTradeIdeaProps {
+  ideaToEdit?: TradeIdea
+  onSuccess?: () => void
+}
+
+export function PostTradeIdea({ ideaToEdit, onSuccess }: PostTradeIdeaProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { firestore } = useFirebase()
@@ -57,6 +63,27 @@ export function PostTradeIdea() {
   const [underlying, setUnderlying] = useState("")
   const [strategy, setStrategy] = useState<"SINGLE" | "VERTICAL_SPREAD">("SINGLE")
   const [legs, setLegs] = useState<OptionLeg[]>([{ side: "BUY", type: "CALL", strike: 0, expiration: "", contracts: 1 }])
+
+  // Initialize form if editing
+  useEffect(() => {
+    if (ideaToEdit && open) {
+      setType(ideaToEdit.instrumentType)
+      setNote(ideaToEdit.note)
+      if (ideaToEdit.instrumentType === "STOCK") {
+        setTicker(ideaToEdit.ticker || "")
+        setDirection(ideaToEdit.direction || "LONG")
+        setAction(ideaToEdit.action || "BUY")
+        setTimeframe(ideaToEdit.timeframe || "SWING")
+        setEntry(ideaToEdit.entryPlan || "")
+        setStop(ideaToEdit.stopLoss || "")
+        setInvalidation(ideaToEdit.invalidation || "")
+      } else {
+        setUnderlying(ideaToEdit.underlying || "")
+        setStrategy(ideaToEdit.strategyType || "SINGLE")
+        setLegs(ideaToEdit.legs || [{ side: "BUY", type: "CALL", strike: 0, expiration: "", contracts: 1 }])
+      }
+    }
+  }, [ideaToEdit, open])
 
   const addLeg = () => {
     if (legs.length < 2) {
@@ -103,19 +130,14 @@ export function PostTradeIdea() {
       // Call AI Summarize Flow
       const aiResponse = await summarizeTradeIdea(summaryInput)
 
-      const ideaId = crypto.randomUUID()
+      const ideaId = ideaToEdit ? ideaToEdit.id : crypto.randomUUID()
       const ideaData = {
-        id: ideaId,
-        userId: user.uid,
         instrumentType: type,
         note,
         aiSummaryBullets: aiResponse.aiSummaryBullets,
         riskLine: aiResponse.riskLine,
         payoffHint: aiResponse.payoffHint,
-        createdAt: serverTimestamp(),
-        // Use real display name for the feed
-        createdBy: userProfile.displayName || (userProfile.role === 'admin' ? 'Admin' : 'Member'),
-        likeCount: 0,
+        updatedAt: serverTimestamp(),
         ...(type === "STOCK" ? {
           ticker: ticker.toUpperCase(),
           direction,
@@ -131,16 +153,30 @@ export function PostTradeIdea() {
         })
       }
 
-      await setDoc(doc(firestore, "tradeIdeas", ideaId), ideaData)
+      if (ideaToEdit) {
+        await updateDoc(doc(firestore, "tradeIdeas", ideaId), ideaData)
+      } else {
+        await setDoc(doc(firestore, "tradeIdeas", ideaId), {
+          ...ideaData,
+          id: ideaId,
+          userId: user.uid,
+          createdAt: serverTimestamp(),
+          createdBy: userProfile.displayName || (userProfile.role === 'admin' ? 'Admin' : 'Member'),
+          likeCount: 0,
+        })
+      }
       
       setOpen(false)
-      toast({ title: "Trade Idea Published", description: "AI research summary generated and posted to forum." })
+      toast({ title: ideaToEdit ? "Idea Updated" : "Trade Idea Published" })
+      if (onSuccess) onSuccess()
       
-      // Reset
-      setNote(""); setTicker(""); setUnderlying("")
+      // Reset if not editing
+      if (!ideaToEdit) {
+        setNote(""); setTicker(""); setUnderlying("")
+      }
     } catch (err) {
       console.error(err)
-      toast({ title: "Error", description: "Failed to generate AI summary or save idea.", variant: "destructive" })
+      toast({ title: "Error", description: "Operation failed.", variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -149,16 +185,23 @@ export function PostTradeIdea() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-primary hover:bg-primary/90 font-bold gap-2">
-          <Plus className="w-4 h-4" />
-          Share Idea
-        </Button>
+        {ideaToEdit ? (
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary gap-2">
+            <Edit2 className="w-4 h-4" />
+            <span className="text-xs font-bold">Edit</span>
+          </Button>
+        ) : (
+          <Button className="bg-primary hover:bg-primary/90 font-bold gap-2">
+            <Plus className="w-4 h-4" />
+            Share Idea
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-3xl terminal-card bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-headline flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Share Research Idea
+            {ideaToEdit ? "Edit Research Idea" : "Share Research Idea"}
           </DialogTitle>
         </DialogHeader>
 
@@ -318,7 +361,7 @@ export function PostTradeIdea() {
                 </>
               ) : (
                 <>
-                  Share Research Note
+                  {ideaToEdit ? "Update Research Note" : "Share Research Note"}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

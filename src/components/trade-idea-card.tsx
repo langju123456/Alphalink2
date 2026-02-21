@@ -1,3 +1,4 @@
+
 "use client"
 
 import { TradeIdea } from "@/lib/types"
@@ -10,15 +11,30 @@ import {
   Calendar,
   AlertTriangle,
   Lightbulb,
-  Heart
+  Heart,
+  Trash2
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "./ui/button"
+import { useUser, useFirebase, useMemoFirebase, useDoc } from "@/firebase"
+import { doc, deleteDoc, updateDoc, increment } from "firebase/firestore"
+import { useToast } from "@/hooks/use-toast"
+import { PostTradeIdea } from "./post-trade-idea"
 
 export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
+  const { user } = useUser()
+  const { firestore } = useFirebase()
+  const { toast } = useToast()
   const [likes, setLikes] = useState(idea.likeCount || 0)
   const [mounted, setMounted] = useState(false)
   
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null
+    return doc(firestore, "users", user.uid)
+  }, [user, firestore])
+  
+  const { data: userProfile } = useDoc(userDocRef)
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -28,15 +44,42 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
 
   const getPostedAt = () => {
     if (!mounted || !idea.createdAt) return "..."
-    // Handle both number timestamps and Firestore Timestamp objects
     const date = typeof idea.createdAt === 'number' 
       ? idea.createdAt 
       : (idea.createdAt as any).toDate?.() || new Date()
     return `${formatDistanceToNow(date)} ago`
   }
 
+  const isOwner = user?.uid === idea.userId
+  const isAdmin = userProfile?.role === "admin"
+  const canManage = isOwner || isAdmin
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to remove this research note?")) return
+    if (!firestore) return
+
+    try {
+      await deleteDoc(doc(firestore, "tradeIdeas", idea.id))
+      toast({ title: "Note removed" })
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to delete note.", variant: "destructive" })
+    }
+  }
+
+  const handleLike = async () => {
+    if (!firestore) return
+    setLikes(prev => prev + 1)
+    try {
+      await updateDoc(doc(firestore, "tradeIdeas", idea.id), {
+        likeCount: increment(1)
+      })
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   return (
-    <div className="terminal-card mb-6 group">
+    <div className="terminal-card mb-6 group relative">
       <div className="p-6">
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-4">
@@ -166,12 +209,27 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => setLikes(prev => prev + 1)}
+              onClick={handleLike}
               className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 gap-2"
             >
               <Heart className="w-4 h-4" />
               <span className="text-xs font-bold">{likes}</span>
             </Button>
+            
+            {canManage && (
+              <div className="flex items-center gap-2 border-l border-border pl-4">
+                <PostTradeIdea ideaToEdit={idea} />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleDelete}
+                  className="text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-xs font-bold">Delete</span>
+                </Button>
+              </div>
+            )}
           </div>
           <p className="text-[10px] text-muted-foreground font-bold tracking-tighter uppercase italic">
             For educational purposes only. Not financial advice.
