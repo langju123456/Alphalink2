@@ -1,16 +1,18 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ShieldAlert, TrendingUp, Cpu, Lock, Sparkles, Loader2 } from "lucide-react"
+import { ShieldAlert, TrendingUp, Cpu, Lock, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useFirebase, useUser } from "@/firebase"
 import { signInAnonymously } from "firebase/auth"
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore"
 
-const ADMIN_BOOTSTRAP_CODE = 'ALPHA_ADMIN_2024';
+// The new secure master code for administrator access
+const ADMIN_BOOTSTRAP_CODE = 'ALPHALINK_ADMIN_888';
 
 export default function LandingPage() {
   const [code, setCode] = useState("")
@@ -84,11 +86,6 @@ export default function LandingPage() {
     }
   }
 
-  const handleDemoAccess = () => {
-    setCode(ADMIN_BOOTSTRAP_CODE)
-    handleLogin(undefined, ADMIN_BOOTSTRAP_CODE)
-  }
-
   if (isUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -147,27 +144,9 @@ export default function LandingPage() {
               {isLoading ? "Validating..." : "Enter Terminal"}
             </Button>
           </form>
-
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-[10px] uppercase">
-              <span className="bg-background px-2 text-muted-foreground font-bold tracking-widest">Prototype Access</span>
-            </div>
-          </div>
-
-          <Button 
-            variant="outline"
-            onClick={handleDemoAccess}
-            className="w-full h-12 border-primary/20 hover:bg-primary/10 text-primary font-bold gap-2"
-          >
-            <Sparkles className="w-4 h-4" />
-            TRY DEMO (ADMIN ACCESS)
-          </Button>
         </div>
 
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest pt-8">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest pt-12">
           For educational purposes only • AlphaLink Systems Inc
         </p>
       </div>
