@@ -13,7 +13,14 @@ export const translations = {
       language: "Language",
       sessionRole: "Session Role",
       admin: "Administrator",
-      member: "Member Terminal"
+      member: "Member Terminal",
+      tier: "Membership Tier"
+    },
+    tiers: {
+      standard: "Standard",
+      vip: "VIP Pro",
+      premium: "Premium Elite",
+      all: "All Tiers"
     },
     feed: {
       title: "Market Intelligence",
@@ -43,13 +50,14 @@ export const translations = {
     },
     invites: {
       title: "Access Management",
-      description: "Generate and manage invitation codes for private members.",
+      description: "Generate multi-tier invitation codes for private members.",
       label: "Group / Name",
       labelPlaceholder: "e.g. VIP Group, Twitter Event",
       generateBtn: "Generate New Invite",
       tableCode: "Access Code",
       tableLabel: "Label / Category",
       tableStatus: "Status",
+      tableTier: "Tier",
       tableCreated: "Created",
       tableActions: "Actions",
       newlyGenerated: "Newly Generated Access Code",
@@ -61,7 +69,8 @@ export const translations = {
       editLabel: "Edit Label",
       deleteInvite: "Delete Invite",
       confirmDelete: "Are you sure you want to delete this invite?",
-      saveChanges: "Save Changes"
+      saveChanges: "Save Changes",
+      selectTier: "Select Tier"
     },
     assistant: {
       title: "AlphaBot AI",
@@ -91,7 +100,14 @@ export const translations = {
       language: "语言切换",
       sessionRole: "当前角色",
       admin: "管理员权限",
-      member: "成员终端"
+      member: "成员终端",
+      tier: "会员等级"
+    },
+    tiers: {
+      standard: "基础版",
+      vip: "VIP专业版",
+      premium: "精英版",
+      all: "所有等级"
     },
     feed: {
       title: "市场情报",
@@ -121,13 +137,14 @@ export const translations = {
     },
     invites: {
       title: "权限管理",
-      description: "为私有成员生成和管理访问邀请码。",
+      description: "为私有成员生成不同等级的访问邀请码。",
       label: "分组 / 名称",
       labelPlaceholder: "例如：VIP群组、推特推广",
       generateBtn: "生成新邀请码",
       tableCode: "访问码",
       tableLabel: "标签 / 类别",
       tableStatus: "状态",
+      tableTier: "等级",
       tableCreated: "创建时间",
       tableActions: "操作",
       newlyGenerated: "新生成的访问码",
@@ -139,7 +156,8 @@ export const translations = {
       editLabel: "编辑标签",
       deleteInvite: "删除邀请码",
       confirmDelete: "确定要永久删除此邀请码吗？",
-      saveChanges: "保存更改"
+      saveChanges: "保存更改",
+      selectTier: "选择等级"
     },
     assistant: {
       title: "AlphaBot AI",

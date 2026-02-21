@@ -5,67 +5,59 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Invite",
       "type": "object",
-      "description": "Represents an invitation code used by administrators to grant access to new members.",
+      "description": "Represents an invitation code used by administrators to grant access to new members with specific tiers.",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Unique identifier for the Invite entity."
+          "type": "string"
         },
         "code": {
-          "type": "string",
-          "description": "The plain text invitation code."
+          "type": "string"
         },
         "label": {
-          "type": "string",
-          "description": "A descriptive label or category for the invite (e.g., 'VIP Group', 'Twitter Promo')."
+          "type": "string"
         },
         "role": {
           "type": "string",
-          "description": "The role assigned to a user upon successful use of this invite code.",
           "enum": ["member", "admin"]
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["standard", "vip", "premium"],
+          "description": "The membership tier associated with this invite."
         },
         "status": {
           "type": "string",
-          "description": "Current status of the invitation code.",
           "enum": ["active", "disabled"]
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp when the invitation code was created.",
           "format": "date-time"
         },
         "usedCount": {
-          "type": "number",
-          "description": "Number of times this invitation code has been used."
+          "type": "number"
         }
       },
-      "required": [
-        "id",
-        "code",
-        "role",
-        "status",
-        "createdAt",
-        "usedCount"
-      ]
+      "required": ["id", "code", "role", "tier", "status", "createdAt"]
     },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user profile within the AlphaLink system.",
+      "description": "Represents a user profile within the AlphaLink system including their membership tier.",
       "properties": {
         "uid": {
-          "type": "string",
-          "description": "Unique user ID from Firebase Auth."
+          "type": "string"
         },
         "role": {
           "type": "string",
-          "description": "Assigned role of the user.",
           "enum": ["admin", "member"]
         },
-        "accessCode": {
+        "tier": {
           "type": "string",
-          "description": "The code used to gain access."
+          "enum": ["standard", "vip", "premium"]
+        },
+        "accessCode": {
+          "type": "string"
         },
         "createdAt": {
           "type": "string",
@@ -76,13 +68,11 @@
           "format": "date-time"
         }
       },
-      "required": ["uid", "role"]
+      "required": ["uid", "role", "tier"]
     }
   },
   "auth": {
-    "providers": [
-      "anonymous"
-    ]
+    "providers": ["anonymous"]
   },
   "firestore": {
     "/users/{userId}": {

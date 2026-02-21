@@ -1,8 +1,10 @@
 
 export type Role = 'admin' | 'member';
+export type Tier = 'standard' | 'vip' | 'premium';
 
 export interface UserSession {
   role: Role;
+  tier: Tier;
   accessCode: string;
   loggedInAt: number;
 }
@@ -24,11 +26,10 @@ export interface TradeIdea {
   aiSummaryBullets: string[];
   riskLine: string;
   payoffHint: string;
-  createdAt: any; // Can be number or Firestore Timestamp
+  createdAt: any; 
   createdBy: string;
   likeCount: number;
   
-  // Stock specific
   ticker?: string;
   direction?: 'LONG' | 'SHORT';
   action?: 'BUY' | 'SELL' | 'HOLD';
@@ -37,7 +38,6 @@ export interface TradeIdea {
   stopLoss?: string;
   invalidation?: string;
 
-  // Options specific
   underlying?: string;
   strategyType?: 'SINGLE' | 'VERTICAL_SPREAD';
   legs?: OptionLeg[];
@@ -57,7 +57,8 @@ export interface Invite {
   id: string;
   code: string;
   label?: string;
-  role: 'member' | 'admin';
+  role: Role;
+  tier: Tier;
   status: 'active' | 'disabled';
   createdAt: any;
   usedCount: number;
