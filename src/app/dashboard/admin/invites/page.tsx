@@ -4,13 +4,20 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
-import { collection, doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore"
+import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Copy, Loader2, ShieldCheck, Tag } from "lucide-react"
+import { Plus, Copy, Loader2, ShieldCheck, Tag, Trash2, Edit2, Check, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { useLanguage } from "@/components/language-provider"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 export default function InvitesPage() {
   const router = useRouter()
@@ -23,6 +30,11 @@ export default function InvitesPage() {
   const [newCode, setNewCode] = useState<string | null>(null)
   const [inviteLabel, setInviteLabel] = useState("")
   const [mounted, setMounted] = useState(false)
+
+  // Edit State
+  const [editingInvite, setEditingInvite] = useState<any>(null)
+  const [editLabelValue, setEditLabelValue] = useState("")
+  const [isUpdating, setIsUpdating] = useState(false)
 
   // Fetch current user's role from Firestore
   const userDocRef = useMemoFirebase(() => {
@@ -111,6 +123,37 @@ export default function InvitesPage() {
     }
   }
 
+  const deleteInvite = async (id: string) => {
+    if (!confirm(t.invites.confirmDelete)) return
+    try {
+      await deleteDoc(doc(firestore, "invites", id))
+      toast({ title: "Invite Deleted" })
+    } catch (err: any) {
+      toast({ title: "Error deleting invite", variant: "destructive" })
+    }
+  }
+
+  const startEdit = (invite: any) => {
+    setEditingInvite(invite)
+    setEditLabelValue(invite.label || "General")
+  }
+
+  const saveEdit = async () => {
+    if (!editingInvite || !firestore) return
+    setIsUpdating(true)
+    try {
+      await updateDoc(doc(firestore, "invites", editingInvite.id), {
+        label: editLabelValue.trim() || "General"
+      })
+      setEditingInvite(null)
+      toast({ title: "Label Updated" })
+    } catch (err: any) {
+      toast({ title: "Error updating label", variant: "destructive" })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     toast({ title: "Copied to Clipboard" })
@@ -186,9 +229,14 @@ export default function InvitesPage() {
                     <span className="text-foreground font-bold text-base">{inv.code}</span>
                   </td>
                   <td className="p-4">
-                    <span className="text-xs font-bold text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">
-                      {inv.label || "General"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">
+                        {inv.label || "General"}
+                      </span>
+                      <button onClick={() => startEdit(inv)} className="text-muted-foreground hover:text-primary transition-colors">
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
@@ -203,14 +251,24 @@ export default function InvitesPage() {
                       : "..."}
                   </td>
                   <td className="p-4 text-right">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => toggleInvite(inv.id, inv.status)}
-                      className={`text-[10px] font-bold uppercase tracking-tighter ${inv.status === "active" ? "hover:text-rose-500 hover:bg-rose-500/10" : "hover:text-emerald-500 hover:bg-emerald-500/10"}`}
-                    >
-                      {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => toggleInvite(inv.id, inv.status)}
+                        className={`text-[10px] font-bold uppercase tracking-tighter ${inv.status === "active" ? "hover:text-rose-500 hover:bg-rose-500/10" : "hover:text-emerald-500 hover:bg-emerald-500/10"}`}
+                      >
+                        {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => deleteInvite(inv.id)}
+                        className="text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 p-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -218,6 +276,32 @@ export default function InvitesPage() {
           </table>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingInvite} onOpenChange={(open) => !open && setEditingInvite(null)}>
+        <DialogContent className="terminal-card bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="font-headline">{t.invites.editLabel}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.invites.label}</label>
+              <Input 
+                value={editLabelValue} 
+                onChange={(e) => setEditLabelValue(e.target.value)} 
+                className="bg-secondary"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditingInvite(null)} className="font-bold">{t.common.cancel}</Button>
+            <Button onClick={saveEdit} disabled={isUpdating} className="bg-primary font-bold">
+              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+              {t.invites.saveChanges}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

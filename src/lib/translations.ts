@@ -57,7 +57,11 @@ export const translations = {
       active: "Active",
       disabled: "Disabled",
       disableAction: "Disable Access",
-      enableAction: "Re-Enable"
+      enableAction: "Re-Enable",
+      editLabel: "Edit Label",
+      deleteInvite: "Delete Invite",
+      confirmDelete: "Are you sure you want to delete this invite?",
+      saveChanges: "Save Changes"
     },
     assistant: {
       title: "AlphaBot AI",
@@ -131,7 +135,11 @@ export const translations = {
       active: "活跃",
       disabled: "已禁用",
       disableAction: "禁用权限",
-      enableAction: "重新启用"
+      enableAction: "重新启用",
+      editLabel: "编辑标签",
+      deleteInvite: "删除邀请码",
+      confirmDelete: "确定要永久删除此邀请码吗？",
+      saveChanges: "保存更改"
     },
     assistant: {
       title: "AlphaBot AI",
