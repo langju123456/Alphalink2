@@ -60,26 +60,37 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const canManage = isOwner || isAdmin
 
   const handleDelete = async () => {
-    if (isDeleting) return
+    if (isDeleting || !firestore) return
     if (!confirm("Confirm Deletion: This research note will be permanently removed from the terminal feed.")) return
     
-    if (!firestore) return
     setIsDeleting(true)
-
     const docPath = `tradeIdeas/${idea.id}`
-    console.log("DELETE_CLICK", { id: idea.id, collection: "tradeIdeas", docPath })
+    
+    // HARD OBSERVABILITY LOG
+    console.log("DELETE_CLICK", { 
+      id: idea.id, 
+      collection: "tradeIdeas", 
+      docPath,
+      userRole: userProfile?.role,
+      uid: user?.uid 
+    })
 
     const docRef = doc(firestore, "tradeIdeas", idea.id)
     
     deleteDoc(docRef)
       .then(() => {
+        console.log("DELETE_SUCCESS", docPath)
         toast({ 
           title: "DELETE SUCCESS", 
-          description: `Deleted ${idea.id}` 
+          description: `Deleted document ${idea.id}` 
         })
       })
       .catch(async (err: any) => {
-        console.error("DELETE_FAILED", { path: docPath, code: err.code, message: err.message })
+        console.error("DELETE_FAILED", { 
+          path: docPath, 
+          code: err.code, 
+          message: err.message 
+        })
         
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
@@ -90,7 +101,7 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
         
         toast({ 
           title: "DELETE FAILED", 
-          description: `Delete failed: ${err.code} ${err.message}`,
+          description: `${err.code}: ${err.message}`,
           variant: "destructive" 
         })
       })

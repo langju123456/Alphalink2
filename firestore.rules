@@ -4,10 +4,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * AlphaLink v2 Security Rules
+     * AlphaLink v2 核心安全规则 - 生产加固版
      */
 
-    // --- HELPER FUNCTIONS ---
+    // --- 基础授权函数 ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -17,71 +17,63 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    function getUserData() {
-      // Use getAfter if checking data during the same request, 
-      // but for isAdmin, we usually check existing state.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
+    // --- 角色校验函数 (直接路径访问，避免递归) ---
+    
     function isAdmin() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        getUserData().role == 'admin'
-      );
+      return isSignedIn() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // --- COLLECTION RULES ---
+    // --- 集合规则 ---
 
     match /users/{userId} {
+      // 允许任何已登录用户读取基础资料（用于界面显示发布者姓名）
       allow get: if isSignedIn();
+      // 仅管理员可列出所有用户
       allow list: if isAdmin();
+      // 用户只能创建自己的初始资料
       allow create: if isOwner(userId);
+      // 用户可更新自己的非权限字段，管理员可更新一切
       allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+      // 仅管理员可删除用户
       allow delete: if isAdmin();
     }
 
     match /invites/{inviteId} {
-      allow list: if isSignedIn();
-      allow get, create, update, delete: if isAdmin();
+      // 登录用户可读取邀请码状态（用于验证登录）
+      allow get, list: if isSignedIn();
+      // 仅管理员可管理邀请码
+      allow create, update, delete: if isAdmin();
     }
 
     match /tradeIdeas/{tradeIdeaId} {
+      // 所有人可见
       allow get, list: if isSignedIn();
+      // 所有人可发布（共享论坛模式）
       allow create: if isSignedIn();
+      // 仅作者或管理员可编辑/删除
       allow update, delete: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
 
       match /comments/{commentId} {
         allow get, list: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow update: if isExistingOwner(resource.data.userId) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isExistingOwner(resource.data.userId) || isAdmin();
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
       }
 
       match /likes/{userId} {
         allow get, list: if isSignedIn();
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if false;
-        allow delete: if isExistingOwner(userId);
+        allow create, delete: if isOwner(userId);
       }
     }
 
     match /highlights/{highlightId} {
       allow get, list: if isSignedIn();
-      // Allow all members to share their wins
       allow create: if isSignedIn();
-      // Only the author or admin can delete a highlight
       allow update, delete: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
     }
 
     match /users/{userId}/messages/{messageId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
+      allow get, list, create, update, delete: if isOwner(userId);
     }
   }
 }

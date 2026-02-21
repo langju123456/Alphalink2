@@ -118,22 +118,38 @@ export default function InvitesPage() {
 
     setIsDeletingId(id)
     const docPath = `invites/${id}`
-    console.log("DELETE_CLICK", { id, collection: "invites", docPath })
+    
+    // HARD OBSERVABILITY LOG
+    console.log("DELETE_CLICK", { 
+      id, 
+      collection: "invites", 
+      docPath,
+      uid: user?.uid 
+    })
 
     const docRef = doc(firestore, "invites", id)
     
     deleteDoc(docRef)
       .then(() => {
-        toast({ title: "DELETE SUCCESS", description: `Deleted ${id}` })
+        console.log("DELETE_SUCCESS", docPath)
+        toast({ title: "DELETE SUCCESS", description: `Deleted invite ${id}` })
       })
       .catch(async (err: any) => {
-        console.error("DELETE_FAILED", { path: docPath, code: err.code, message: err.message })
+        console.error("DELETE_FAILED", { 
+          path: docPath, 
+          code: err.code, 
+          message: err.message 
+        })
         
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'delete',
         }))
-        toast({ title: "DELETE FAILED", description: `Delete failed: ${err.code} ${err.message}`, variant: "destructive" })
+        toast({ 
+          title: "DELETE FAILED", 
+          description: `${err.code}: ${err.message}`, 
+          variant: "destructive" 
+        })
       })
       .finally(() => {
         setIsDeletingId(null)
