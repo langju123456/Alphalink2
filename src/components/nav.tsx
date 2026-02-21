@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -9,20 +10,23 @@ import {
   MessageSquare, 
   Users, 
   LogOut,
-  Award
+  Award,
+  Moon,
+  Sun
 } from "lucide-react"
 import { useAuth, useUser, useDoc, useMemoFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
 import { getFirestore } from "firebase/firestore"
 import { Button } from "./ui/button"
+import { useTheme } from "next-themes"
 
 export function DashboardNav() {
   const pathname = usePathname()
   const router = useRouter()
   const auth = useAuth()
   const { user } = useUser()
+  const { theme, setTheme } = useTheme()
   
-  // Use a fallback firestore getter for the memo hook if the main useFirebase isn't used here directly
   const { firestore } = useMemoFirebase(() => ({ firestore: getFirestore() }), [])
   
   const userDocRef = useMemoFirebase(() => {
@@ -78,11 +82,22 @@ export function DashboardNav() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-border mt-auto">
-        <div className="px-4 py-3 mb-4 rounded-md bg-secondary/30">
+      <div className="p-4 border-t border-border mt-auto space-y-2">
+        <div className="flex items-center justify-between px-4 py-2">
+           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Theme Mode</p>
+           <button 
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-1.5 rounded-md hover:bg-secondary/50 text-muted-foreground hover:text-primary transition-colors"
+           >
+             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+           </button>
+        </div>
+
+        <div className="px-4 py-3 rounded-md bg-secondary/30">
           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Session Role</p>
           <p className="text-sm font-semibold capitalize text-primary">{userProfile?.role || "Terminal User"}</p>
         </div>
+        
         <Button 
           variant="ghost" 
           onClick={handleLogout}

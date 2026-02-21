@@ -1,30 +1,40 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 200 15% 10%;
+    /* Base Colors for Finance Terminal Aesthetic */
+    --background: 200 12% 10%; /* #161B1D */
     --foreground: 210 20% 98%;
-    --card: 200 15% 12%;
+    --card: 200 12% 12%;
     --card-foreground: 210 20% 98%;
-    --popover: 200 15% 12%;
+    --popover: 200 12% 12%;
     --popover-foreground: 210 20% 98%;
-    --primary: 196 70% 50%;
+    --primary: 197 71% 50%; /* #26A9DB - Cyan Blue */
     --primary-foreground: 210 20% 98%;
-    --secondary: 200 15% 18%;
+    --secondary: 200 12% 18%;
     --secondary-foreground: 210 20% 98%;
-    --muted: 200 15% 18%;
+    --muted: 200 12% 18%;
     --muted-foreground: 210 10% 70%;
-    --accent: 196 70% 50%;
+    --accent: 197 71% 50%;
     --accent-foreground: 210 20% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 20% 98%;
-    --border: 200 15% 18%;
-    --input: 200 15% 18%;
-    --ring: 196 70% 50%;
+    --border: 200 12% 18%;
+    --input: 200 12% 18%;
+    --ring: 197 71% 50%;
     --radius: 0.5rem;
-    --success: 145 80% 57%;
+    --success: 144 80% 57%; /* #38EB7F - Accent Green */
+  }
+
+  .dark {
+    /* For next-themes consistency, ensuring same values as :root in dark mode */
+    --background: 200 12% 10%;
+    --foreground: 210 20% 98%;
+    --primary: 197 71% 50%;
+    --success: 144 80% 57%;
   }
 }
 
