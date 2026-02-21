@@ -47,7 +47,7 @@ export default function LandingPage() {
   const { auth, firestore } = useFirebase()
   const { user, isUserLoading } = useUser()
 
-  // Effect to redirect already logged in users with complete profiles
+  // 1. Initial check: If user is already logged in AND has a complete profile, jump to dashboard
   useEffect(() => {
     async function checkExistingProfile() {
       if (!isUserLoading && user && firestore) {
@@ -68,12 +68,13 @@ export default function LandingPage() {
     const finalCode = code.trim().toUpperCase()
 
     try {
+      // Step A: Perform anonymous login to get a UID
       const userCredential = await signInAnonymously(auth)
       const userId = userCredential.user.uid
 
       let role: Role | null = null
 
-      // 1. Verify Access Code
+      // Step B: Verify the Access Code
       if (finalCode === ADMIN_BOOTSTRAP_CODE) {
         role = 'admin'
       } else {
@@ -90,20 +91,27 @@ export default function LandingPage() {
       if (role) {
         setAssignedRole(role)
         
-        // 2. Check if user already has a profile in Firestore
-        const userDoc = await getDoc(doc(firestore, "users", userId))
+        // Step C: Check if this specific User (UID) is already registered in Firestore
+        const userDocRef = doc(firestore, "users", userId)
+        const userDoc = await getDoc(userDocRef)
+
         if (userDoc.exists() && userDoc.data().displayName) {
-          // Profile exists, skip onboarding
+          // USER IS REGISTERED: Jump in directly
           toast({
-            title: "Session Resumed",
-            description: `Welcome back, ${userDoc.data().displayName}.`,
+            title: "Access Granted",
+            description: `Welcome back to the terminal.`,
           })
           router.push("/dashboard/feed")
         } else {
-          // No profile, show onboarding step
+          // USER NOT REGISTERED: Show registration form (Onboarding gate)
           setStep('profile')
+          toast({
+            title: "Code Verified",
+            description: "Please complete your member profile to continue.",
+          })
         }
       } else {
+        // Invalid code
         await signOut(auth)
         toast({
           title: "Access Denied",
@@ -130,6 +138,7 @@ export default function LandingPage() {
 
     try {
       const userId = auth.currentUser.uid
+      // Save full profile data to Firestore User entity
       await setDoc(doc(firestore, "users", userId), {
         uid: userId,
         role: assignedRole,
@@ -142,14 +151,14 @@ export default function LandingPage() {
       }, { merge: true })
 
       toast({
-        title: "Setup Complete",
-        description: `Welcome to the AlphaLink Terminal.`,
+        title: "Registration Complete",
+        description: `Your profile has been created. Initializing session...`,
       })
       
       router.push("/dashboard/feed")
     } catch (err) {
       toast({
-        title: "Save Error",
+        title: "Registration Error",
         description: "Could not finalize your profile.",
         variant: "destructive"
       })
@@ -214,7 +223,7 @@ export default function LandingPage() {
             <div className="p-6 terminal-card bg-secondary/10 border-primary/20">
               <div className="flex items-center gap-3 mb-6">
                 <ShieldCheck className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-bold text-white text-left">Onboarding Profile</h2>
+                <h2 className="text-lg font-bold text-white text-left">Registration Required</h2>
               </div>
 
               <form onSubmit={handleCompleteProfile} className="space-y-5 text-left">
@@ -271,7 +280,7 @@ export default function LandingPage() {
                   disabled={isLoading}
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                  Finalize Access
+                  Register & Enter Terminal
                 </Button>
               </form>
             </div>

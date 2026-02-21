@@ -31,6 +31,7 @@ export default function InvitesPage() {
   const [recipient, setRecipient] = useState("")
   const [mounted, setMounted] = useState(false)
 
+  // Edit States
   const [editingInvite, setEditingInvite] = useState<any>(null)
   const [editLabelValue, setEditLabelValue] = useState("")
   const [editRecipientValue, setEditRecipientValue] = useState("")
@@ -47,6 +48,7 @@ export default function InvitesPage() {
     setMounted(true)
   }, [])
 
+  // Admin access gate
   useEffect(() => {
     if (!isRoleLoading && userProfile && userProfile.role !== "admin") {
       router.push("/dashboard/feed")
@@ -108,12 +110,19 @@ export default function InvitesPage() {
   const deleteInvite = async (id: string) => {
     if (!confirm(t.invites.confirmDelete)) return
     try {
-      // Direct deletion from firestore
+      // PERMANENT DELETION FROM FIRESTORE
       await deleteDoc(doc(firestore, "invites", id))
-      toast({ title: t.common.success, description: "Invitation code purged." })
+      toast({ 
+        title: "Code Deleted", 
+        description: "The invitation has been permanently removed." 
+      })
     } catch (err: any) {
       console.error(err)
-      toast({ title: "Error deleting", variant: "destructive" })
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete invitation.",
+        variant: "destructive" 
+      })
     }
   }
 
