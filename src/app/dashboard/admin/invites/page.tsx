@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -20,7 +19,7 @@ export default function InvitesPage() {
   const [newCode, setNewCode] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
-  // Fetch current user's role from Firestore to verify admin status
+  // Fetch current user's role from Firestore
   const userDocRef = useMemoFirebase(() => {
     if (!user || !firestore) return null
     return doc(firestore, "users", user.uid)
@@ -44,7 +43,12 @@ export default function InvitesPage() {
     }
   }, [userProfile, isRoleLoading, router, toast])
 
-  const invitesQuery = useMemoFirebase(() => collection(firestore, "invites"), [firestore])
+  // CRITICAL: Only fetch invites if we are sure the user is an admin
+  const invitesQuery = useMemoFirebase(() => {
+    if (!firestore || !userProfile || userProfile.role !== "admin") return null;
+    return collection(firestore, "invites");
+  }, [firestore, userProfile]);
+
   const { data: invites, isLoading: isInvitesLoading } = useCollection(invitesQuery)
 
   if (isRoleLoading || (userProfile && userProfile.role !== "admin")) {
@@ -76,7 +80,6 @@ export default function InvitesPage() {
         description: "Ensure you copy the code now."
       })
     } catch (err: any) {
-      console.error(err)
       toast({
         title: "Error",
         description: "Could not generate invitation code.",
@@ -95,7 +98,6 @@ export default function InvitesPage() {
       })
       toast({ title: `Invite ${nextStatus === "active" ? "Enabled" : "Disabled"}` })
     } catch (err: any) {
-      console.error(err)
       toast({ title: "Error updating invite", variant: "destructive" })
     }
   }

@@ -4,104 +4,50 @@ service cloud.firestore {
 
     /**
      * AlphaLink v2 Security Rules
-     * 
-     * CORE PHILOSOPHY:
-     * This ruleset implements a hybrid security model tailored for a managed investment community.
-     * It combines strict Administrative Control for content and access (invites) with 
-     * User Ownership for personal interactions (chat, comments, likes).
-     *
-     * DATA STRUCTURE:
-     * - /users/{userId}: Source of truth for roles ('admin' or 'member').
-     * - /invites/{inviteId}: Admin-only repository for access codes.
-     * - /tradeIdeas/{tradeIdeaId}: Public (signed-in) feed with admin-only management.
-     * - /highlights/{highlightId}: Public (signed-in) performance feed with admin-only management.
-     * - /users/{userId}/messages: Private user-specific chat histories.
-     *
-     * KEY DECISIONS:
-     * 1. Role-Based Access: Critical actions (creating invites, posting ideas) require an 'admin' role, 
-     *    verified via a lookup to the user's profile document.
-     * 2. Denormalization for Performance: userId and role are denormalized onto comments and messages 
-     *    to allow for O(1) authorization checks without parent document lookups.
-     * 3. Identity Verification: All write operations are strictly bound to the 'request.auth.uid'.
-     * 4. Prototyping Flexibility: While authorization is strictly enforced, schema validation 
-     *    is kept minimal to allow for rapid field iteration.
      */
 
     // --- HELPER FUNCTIONS ---
 
-    /** @description Checks if the user is authenticated with Firebase Auth. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the provided ID matches the authenticated user's UID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks if a document exists and the current user is the owner. Used for updates/deletes. */
     function isExistingOwner(userId) {
       return resource != null && isOwner(userId);
     }
 
-    /** @description Retrieves the user's data from the root users collection. */
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    /** @description Verifies the authenticated user has the 'admin' role. */
     function isAdmin() {
       return isSignedIn() && getUserData().role == 'admin';
     }
 
     // --- COLLECTION RULES ---
 
-    /**
-     * @description Rules for User profiles. Admins manage roles; Users can read their own profile.
-     * @path /users/{userId}
-     * @allow (get) Any signed-in user reading their own profile.
-     * @deny (create) A user attempting to set their own role to 'admin' without being an admin.
-     * @principle Role-based access control and self-identity verification.
-     */
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      // Only admins can promote users or modify profile structures. 
-      // Users can create their own profile initially but only as a 'member'.
-      allow create: if isOwner(userId) && (request.resource.data.role == 'member' || isAdmin());
+      // 允许用户创建自己的初始配置，无论其角色设置
+      allow create: if isOwner(userId);
+      // 仅允许管理员修改角色，用户只能修改除角色外的个人资料
       allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Rules for Invitation codes. Only admins can generate, list, or modify codes.
-     * @path /invites/{inviteId}
-     * @allow (create) An admin generating a new invite code.
-     * @deny (get) A standard 'member' trying to peek at invite details.
-     * @principle Administrative exclusivity for access management.
-     */
     match /invites/{inviteId} {
       allow get, list, create, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Rules for Trade Ideas. Admin-created content viewable by all members.
-     * @path /tradeIdeas/{tradeIdeaId}
-     * @allow (list) A signed-in member browsing the latest ideas.
-     * @deny (update) A non-admin attempting to edit a trade note.
-     * @principle Public-read, Admin-write content model.
-     */
     match /tradeIdeas/{tradeIdeaId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
 
-      /**
-       * @description Comments on trade ideas. Authors can manage their own comments.
-       * @path /tradeIdeas/{tradeIdeaId}/comments/{commentId}
-       * @allow (create) A member posting a comment with their own UID.
-       * @deny (delete) A user trying to delete someone else's comment.
-       * @principle Ownership-based management with relational integrity.
-       */
       match /comments/{commentId} {
         allow get, list: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -109,40 +55,19 @@ service cloud.firestore {
         allow delete: if isExistingOwner(resource.data.userId) || isAdmin();
       }
 
-      /**
-       * @description Likes on trade ideas. Enforced 1-per-user via path-based ownership.
-       * @path /tradeIdeas/{tradeIdeaId}/likes/{userId}
-       * @allow (create) A user liking an idea (userId in path must match auth.uid).
-       * @deny (delete) A user unliking an idea for a different user.
-       * @principle Path-based ownership for atomic unique constraints.
-       */
       match /likes/{userId} {
         allow get, list: if isSignedIn();
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if false; // Likes are typically binary and not updated.
+        allow update: if false;
         allow delete: if isExistingOwner(userId);
       }
     }
 
-    /**
-     * @description Rules for Highlights. Admin-curated performance showcase.
-     * @path /highlights/{highlightId}
-     * @allow (get) A member viewing a high-performance trade highlight.
-     * @deny (create) A member attempting to post a highlight.
-     * @principle Restricted write access for curated content.
-     */
     match /highlights/{highlightId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Rules for Private AI Chat Messages.
-     * @path /users/{userId}/messages/{messageId}
-     * @allow (list) A user viewing their own chat history with AlphaBot.
-     * @deny (get) User A trying to read User B's private AI conversation.
-     * @principle Strict path-based ownership for private data.
-     */
     match /users/{userId}/messages/{messageId} {
       allow get, list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
