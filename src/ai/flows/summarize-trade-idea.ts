@@ -71,7 +71,7 @@ Trade Idea:
 Instrument Type: {{{instrumentType}}}
 Note: {{{note}}}
 
-{{#if (eq instrumentType 'STOCK')}}
+{{#if ticker}}
 Stock Ticker: {{{ticker}}}
 Direction: {{{direction}}}
 Action: {{{action}}}
@@ -81,7 +81,7 @@ Timeframe: {{{timeframe}}}
 {{#if invalidation}}Invalidation: {{{invalidation}}}{{/if}}
 {{/if}}
 
-{{#if (eq instrumentType 'OPTIONS')}}
+{{#if underlying}}
 Underlying: {{{underlying}}}
 Strategy Type: {{{strategyType}}}
 Option Legs:
