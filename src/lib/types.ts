@@ -19,7 +19,7 @@ export interface OptionLeg {
 
 export interface TradeIdea {
   id: string;
-  userId: string; // 关联发布者的 UID
+  userId: string;
   instrumentType: InstrumentType;
   note: string;
   aiSummaryBullets: string[];
@@ -44,6 +44,9 @@ export interface TradeIdea {
 
 export interface Highlight {
   id: string;
+  userId: string;
+  createdBy: string;
+  role: Role;
   title: string;
   tickerOrUnderlying: string;
   returnPct: number;

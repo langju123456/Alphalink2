@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -9,7 +10,8 @@ import {
   Plus,
   Trash2,
   Loader2,
-  TrendingUp
+  TrendingUp,
+  User as UserIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { 
@@ -23,7 +25,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
 import { useLanguage } from "@/components/language-provider"
 
 export default function HighlightsPage() {
@@ -58,7 +59,7 @@ export default function HighlightsPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!firestore) return
+    if (!firestore || !user || !userProfile) return
     
     setIsSubmitting(true)
     const highlightId = crypto.randomUUID()
@@ -66,6 +67,9 @@ export default function HighlightsPage() {
     try {
       await setDoc(doc(firestore, "highlights", highlightId), {
         id: highlightId,
+        userId: user.uid,
+        createdBy: userProfile.displayName || "Member",
+        role: userProfile.role,
         title,
         tickerOrUnderlying: ticker.toUpperCase(),
         returnPct: Number(returnPct),
@@ -87,6 +91,8 @@ export default function HighlightsPage() {
 
   const handleDelete = async (id: string) => {
     if (!firestore) return
+    if (!confirm("Are you sure you want to remove this highlight?")) return
+
     try {
       await deleteDoc(doc(firestore, "highlights", id))
       toast({ title: t.common.success })
@@ -103,35 +109,34 @@ export default function HighlightsPage() {
           <h1 className="text-3xl font-headline font-bold text-white">{t.performance.title}</h1>
           <p className="text-muted-foreground text-sm">{t.performance.description}</p>
         </div>
-        {isAdmin && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 font-bold gap-2">
-                <Plus className="w-4 h-4" />
-                {t.performance.addWin}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="terminal-card bg-card border-border">
-              <DialogHeader>
-                <DialogTitle className="font-headline">{t.performance.publishWin}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAdd} className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input placeholder={t.performance.ticker} value={ticker} onChange={e => setTicker(e.target.value)} className="bg-secondary" required />
-                  <Input placeholder={t.performance.return} type="number" value={returnPct} onChange={e => setReturnPct(e.target.value)} className="bg-secondary" required />
-                </div>
-                <Input placeholder={t.performance.strategy} value={title} onChange={e => setTitle(e.target.value)} className="bg-secondary" required />
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-secondary" required />
-                <Textarea placeholder={t.performance.desc} value={desc} onChange={e => setDesc(e.target.value)} className="bg-secondary" required />
-                <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting} className="w-full bg-primary font-bold uppercase">
-                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.performance.publishBtn}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
+        
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary hover:bg-primary/90 font-bold gap-2">
+              <Plus className="w-4 h-4" />
+              {t.performance.addWin}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="terminal-card bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="font-headline">{t.performance.publishWin}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleAdd} className="space-y-4 pt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Input placeholder={t.performance.ticker} value={ticker} onChange={e => setTicker(e.target.value)} className="bg-secondary" required />
+                <Input placeholder={t.performance.return} type="number" value={returnPct} onChange={e => setReturnPct(e.target.value)} className="bg-secondary" required />
+              </div>
+              <Input placeholder={t.performance.strategy} value={title} onChange={e => setTitle(e.target.value)} className="bg-secondary" required />
+              <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-secondary" required />
+              <Textarea placeholder={t.performance.desc} value={desc} onChange={e => setDesc(e.target.value)} className="bg-secondary" required />
+              <DialogFooter>
+                <Button type="submit" disabled={isSubmitting} className="w-full bg-primary font-bold uppercase">
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.performance.publishBtn}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -145,7 +150,7 @@ export default function HighlightsPage() {
             <p className="text-muted-foreground font-semibold">{t.performance.noHighlights}</p>
           </div>
         ) : highlights.map((h: any) => (
-          <div key={h.id} className="terminal-card bg-secondary/20 relative group">
+          <div key={h.id} className="terminal-card bg-secondary/20 relative group transition-all hover:border-primary/30">
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 rounded bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -156,20 +161,30 @@ export default function HighlightsPage() {
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{t.performance.returnLabel}</p>
                 </div>
               </div>
+              
+              <div className="mb-2 flex items-center gap-2">
+                 <UserIcon className="w-3 h-3 text-muted-foreground" />
+                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                   Shared by {h.createdBy}
+                 </span>
+              </div>
+
               <h3 className="text-lg font-bold text-white mb-2">{h.title}</h3>
               <p className="text-sm text-muted-foreground mb-6 line-clamp-3 leading-relaxed">{h.description}</p>
+              
               <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   {h.date}
                 </div>
-                <div className="flex items-center gap-1 text-primary">
+                <div className={`flex items-center gap-1 ${h.role === 'admin' ? 'text-primary' : 'text-muted-foreground/60'}`}>
                   <Award className="w-3 h-3" />
-                  {t.performance.verified}
+                  {h.role === 'admin' ? t.performance.verified : "Member Win"}
                 </div>
               </div>
             </div>
-            {isAdmin && (
+            
+            {(isAdmin || (user && h.userId === user.uid)) && (
               <button 
                 onClick={() => handleDelete(h.id)}
                 className="absolute top-2 right-2 p-2 bg-rose-500/10 text-rose-500 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 hover:text-white"

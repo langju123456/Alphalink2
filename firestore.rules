@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -25,7 +26,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (getUserData().role == 'admin' || request.auth.uid == 'SYSTEM_ADMIN_UID_OVERRIDE'); // Placeholder for fallback if needed
+      return isSignedIn() && (getUserData().role == 'admin' || request.auth.uid == 'SYSTEM_ADMIN_UID_OVERRIDE');
     }
 
     // --- COLLECTION RULES ---
@@ -34,7 +35,6 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       allow create: if isOwner(userId);
-      // User can update their own profile info but NOT their role or status
       allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
     }
@@ -46,9 +46,7 @@ service cloud.firestore {
 
     match /tradeIdeas/{tradeIdeaId} {
       allow get, list: if isSignedIn();
-      // Allow any signed-in member to share research (Forum style)
       allow create: if isSignedIn();
-      // Only Admin or the Original Author can modify/delete
       allow update, delete: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
 
       match /comments/{commentId} {
@@ -68,7 +66,10 @@ service cloud.firestore {
 
     match /highlights/{highlightId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      // Allow all members to share their wins
+      allow create: if isSignedIn();
+      // Only the author or admin can delete a highlight
+      allow update, delete: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
     }
 
     match /users/{userId}/messages/{messageId} {
