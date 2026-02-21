@@ -13,17 +13,13 @@ import {
   Award,
   Moon,
   Sun,
-  Languages,
-  Crown,
-  Star,
-  User as UserIcon
+  Languages
 } from "lucide-react"
 import { useAuth, useUser, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, getFirestore } from "firebase/firestore"
 import { Button } from "./ui/button"
 import { useTheme } from "next-themes"
 import { useLanguage } from "./language-provider"
-import { Tier } from "@/lib/types"
 
 export function DashboardNav() {
   const pathname = usePathname()
@@ -42,7 +38,6 @@ export function DashboardNav() {
   
   const { data: userProfile } = useDoc(userDocRef)
   const isAdmin = userProfile?.role === "admin"
-  const userTier: Tier = userProfile?.tier || 'standard'
 
   const links = [
     { href: "/dashboard/feed", icon: LayoutGrid, label: t.nav.marketFeed },
@@ -57,14 +52,6 @@ export function DashboardNav() {
   const handleLogout = async () => {
     await auth.signOut()
     router.push("/")
-  }
-
-  const getTierBadge = (tier: Tier) => {
-    switch (tier) {
-      case 'premium': return <div className="flex items-center gap-1.5 text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20"><Crown className="w-3 h-3" /><span className="text-[10px] font-bold uppercase">{t.tiers.premium}</span></div>
-      case 'vip': return <div className="flex items-center gap-1.5 text-primary bg-primary/10 px-2 py-1 rounded border border-primary/20"><Star className="w-3 h-3" /><span className="text-[10px] font-bold uppercase">{t.tiers.vip}</span></div>
-      default: return <div className="flex items-center gap-1.5 text-muted-foreground bg-secondary/30 px-2 py-1 rounded border border-border"><UserIcon className="w-3 h-3" /><span className="text-[10px] font-bold uppercase">{t.tiers.standard}</span></div>
-    }
   }
 
   return (
@@ -113,17 +100,11 @@ export function DashboardNav() {
            </button>
         </div>
 
-        <div className="px-4 py-3 rounded-md bg-secondary/20 space-y-2">
-          <div>
-            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">{t.nav.sessionRole}</p>
-            <p className="text-sm font-semibold capitalize text-foreground">
-              {isAdmin ? t.nav.admin : t.nav.member}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">{t.nav.tier}</p>
-            {getTierBadge(userTier)}
-          </div>
+        <div className="px-4 py-3 rounded-md bg-secondary/20">
+          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">{t.nav.sessionRole}</p>
+          <p className="text-sm font-semibold capitalize text-foreground">
+            {isAdmin ? t.nav.admin : t.nav.member}
+          </p>
         </div>
         
         <Button variant="ghost" onClick={handleLogout} className="w-full flex items-center justify-start gap-3 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10">

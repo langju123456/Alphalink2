@@ -7,11 +7,9 @@ import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/
 import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Copy, Loader2, ShieldCheck, Tag, Trash2, Edit2, Check, Star, Crown, User } from "lucide-react"
+import { Plus, Copy, Loader2, ShieldCheck, Tag, Trash2, Edit2, Check } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
 import { useLanguage } from "@/components/language-provider"
-import { Tier } from "@/lib/types"
 import {
   Dialog,
   DialogContent,
@@ -19,13 +17,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 export default function InvitesPage() {
   const router = useRouter()
@@ -37,7 +28,6 @@ export default function InvitesPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [newCode, setNewCode] = useState<string | null>(null)
   const [inviteLabel, setInviteLabel] = useState("")
-  const [selectedTier, setSelectedTier] = useState<Tier>("standard")
   const [mounted, setMounted] = useState(false)
 
   const [editingInvite, setEditingInvite] = useState<any>(null)
@@ -89,7 +79,6 @@ export default function InvitesPage() {
         code: code,
         label: inviteLabel.trim() || "General",
         role: "member",
-        tier: selectedTier,
         status: "active",
         createdAt: serverTimestamp(),
         usedCount: 0
@@ -99,7 +88,7 @@ export default function InvitesPage() {
       setInviteLabel("")
       toast({
         title: "Invite Generated",
-        description: `Tier: ${selectedTier.toUpperCase()}`
+        description: `Code: ${code}`
       })
     } catch (err: any) {
       toast({
@@ -147,14 +136,6 @@ export default function InvitesPage() {
     }
   }
 
-  const getTierIcon = (tier: Tier) => {
-    switch (tier) {
-      case 'premium': return <Crown className="w-3 h-3 text-amber-400" />
-      case 'vip': return <Star className="w-3 h-3 text-primary" />
-      default: return <User className="w-3 h-3 text-muted-foreground" />
-    }
-  }
-
   return (
     <div className="space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -173,18 +154,8 @@ export default function InvitesPage() {
             placeholder={t.invites.labelPlaceholder}
             value={inviteLabel}
             onChange={(e) => setInviteLabel(e.target.value)}
-            className="h-11 bg-card border-border w-full sm:w-48"
+            className="h-11 bg-card border-border w-full sm:w-64"
           />
-          <Select value={selectedTier} onValueChange={(v: Tier) => setSelectedTier(v)}>
-            <SelectTrigger className="w-full sm:w-36 h-11 bg-card">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="standard">{t.tiers.standard}</SelectItem>
-              <SelectItem value="vip">{t.tiers.vip}</SelectItem>
-              <SelectItem value="premium">{t.tiers.premium}</SelectItem>
-            </SelectContent>
-          </Select>
           <Button onClick={generateInvite} disabled={isGenerating} className="bg-primary font-bold h-11">
             {isGenerating ? <Loader2 className="animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
             {t.invites.generateBtn}
@@ -196,7 +167,7 @@ export default function InvitesPage() {
         <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
           <div>
             <p className="text-[10px] uppercase font-bold text-emerald-400 tracking-widest mb-1">
-              {t.invites.newlyGenerated} - {selectedTier.toUpperCase()}
+              {t.invites.newlyGenerated}
             </p>
             <p className="text-4xl font-code font-bold text-emerald-400 tracking-tighter">{newCode}</p>
           </div>
@@ -214,14 +185,13 @@ export default function InvitesPage() {
               <tr className="bg-secondary/50 border-b border-border">
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableCode}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableLabel}</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableTier}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableStatus}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest text-right">{t.invites.tableActions}</th>
               </tr>
             </thead>
             <tbody>
               {isInvitesLoading ? (
-                <tr><td colSpan={5} className="p-10 text-center italic">Loading terminal data...</td></tr>
+                <tr><td colSpan={4} className="p-10 text-center italic">Loading terminal data...</td></tr>
               ) : invites?.map((inv: any) => (
                 <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
                   <td className="p-4 font-code font-bold text-foreground">{inv.code}</td>
@@ -229,12 +199,6 @@ export default function InvitesPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-xs">{inv.label}</span>
                       <button onClick={() => { setEditingInvite(inv); setEditLabelValue(inv.label); }} className="text-muted-foreground hover:text-primary"><Edit2 className="w-3 h-3" /></button>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      {getTierIcon(inv.tier)}
-                      <span className="text-[10px] font-bold uppercase tracking-tighter">{inv.tier}</span>
                     </div>
                   </td>
                   <td className="p-4">

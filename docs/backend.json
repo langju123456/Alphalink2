@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Invite",
       "type": "object",
-      "description": "Represents an invitation code used by administrators to grant access to new members with specific tiers.",
+      "description": "Represents an invitation code used by administrators to grant access to new members.",
       "properties": {
         "id": {
           "type": "string"
@@ -20,11 +20,6 @@
           "type": "string",
           "enum": ["member", "admin"]
         },
-        "tier": {
-          "type": "string",
-          "enum": ["standard", "vip", "premium"],
-          "description": "The membership tier associated with this invite."
-        },
         "status": {
           "type": "string",
           "enum": ["active", "disabled"]
@@ -37,13 +32,13 @@
           "type": "number"
         }
       },
-      "required": ["id", "code", "role", "tier", "status", "createdAt"]
+      "required": ["id", "code", "role", "status", "createdAt"]
     },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user profile within the AlphaLink system including their membership tier.",
+      "description": "Represents a user profile within the AlphaLink system.",
       "properties": {
         "uid": {
           "type": "string"
@@ -51,10 +46,6 @@
         "role": {
           "type": "string",
           "enum": ["admin", "member"]
-        },
-        "tier": {
-          "type": "string",
-          "enum": ["standard", "vip", "premium"]
         },
         "accessCode": {
           "type": "string"
@@ -68,7 +59,7 @@
           "format": "date-time"
         }
       },
-      "required": ["uid", "role", "tier"]
+      "required": ["uid", "role"]
     }
   },
   "auth": {

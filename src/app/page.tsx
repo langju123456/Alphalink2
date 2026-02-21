@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useFirebase, useUser } from "@/firebase"
 import { signInAnonymously, signOut } from "firebase/auth"
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore"
-import { Tier, Role } from "@/lib/types"
+import { Role } from "@/lib/types"
 
 const ADMIN_BOOTSTRAP_CODE = 'ALPHALINK_ADMIN_888';
 
@@ -34,11 +34,9 @@ export default function LandingPage() {
       const userId = userCredential.user.uid
 
       let role: Role | null = null
-      let tier: Tier = 'standard'
 
       if (finalCode === ADMIN_BOOTSTRAP_CODE) {
         role = 'admin'
-        tier = 'premium'
       } else {
         const invitesRef = collection(firestore, "invites")
         const q = query(invitesRef, where("code", "==", finalCode), where("status", "==", "active"))
@@ -47,7 +45,6 @@ export default function LandingPage() {
         if (!querySnapshot.empty) {
           const inviteData = querySnapshot.docs[0].data()
           role = inviteData.role || 'member'
-          tier = inviteData.tier || 'standard'
         }
       }
 
@@ -55,7 +52,6 @@ export default function LandingPage() {
         await setDoc(doc(firestore, "users", userId), {
           uid: userId,
           role: role,
-          tier: tier,
           accessCode: finalCode,
           updatedAt: serverTimestamp(),
           createdAt: serverTimestamp()
@@ -63,7 +59,7 @@ export default function LandingPage() {
 
         toast({
           title: "Access Granted",
-          description: `Welcome. Authenticated as ${role.toUpperCase()} (${tier.toUpperCase()}).`,
+          description: `Welcome. Authenticated as ${role.toUpperCase()}.`,
         })
         
         setTimeout(() => {
@@ -106,15 +102,15 @@ export default function LandingPage() {
             <TrendingUp className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-4xl font-headline font-bold tracking-tight text-white">AlphaLink v2</h1>
-          <p className="text-muted-foreground">Private Multi-Tier Research Hub</p>
+          <p className="text-muted-foreground">Private Community Terminal Access</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 text-left py-8">
           <div className="flex gap-4 p-4 terminal-card bg-secondary/20">
             <Cpu className="w-5 h-5 text-primary shrink-0" />
             <div>
-              <p className="font-semibold text-sm">Tiered Research</p>
-              <p className="text-xs text-muted-foreground">Standard, VIP, and Premium exclusive desk insights.</p>
+              <p className="font-semibold text-sm">Institutional Desk</p>
+              <p className="text-xs text-muted-foreground">Real-time market insights from professional desks.</p>
             </div>
           </div>
         </div>
@@ -144,7 +140,7 @@ export default function LandingPage() {
         </div>
 
         <p className="text-[10px] text-muted-foreground uppercase tracking-widest pt-12">
-          Secured Alpha Connection • Tier Verification Required
+          Secured Alpha Connection • Encryption Active
         </p>
       </div>
     </div>

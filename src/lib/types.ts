@@ -1,10 +1,8 @@
 
 export type Role = 'admin' | 'member';
-export type Tier = 'standard' | 'vip' | 'premium';
 
 export interface UserSession {
   role: Role;
-  tier: Tier;
   accessCode: string;
   loggedInAt: number;
 }
@@ -58,7 +56,6 @@ export interface Invite {
   code: string;
   label?: string;
   role: Role;
-  tier: Tier;
   status: 'active' | 'disabled';
   createdAt: any;
   usedCount: number;
