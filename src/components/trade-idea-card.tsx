@@ -58,27 +58,21 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
   const canManage = isOwner || isAdmin
 
   const handleDelete = async () => {
-    console.log("CRITICAL: NOTE_DELETE_START", idea.id);
+    if (!firestore || !canManage) return;
     
-    if (!firestore) {
-      toast({ title: "System Error", description: "Firestore not ready.", variant: "destructive" });
-      return;
-    }
-
     setIsDeleting(true);
-    toast({ title: "Deleting...", description: "Removing note from terminal." });
+    toast({ title: "Removing note...", description: "Terminal request initiated." });
 
     const docRef = doc(firestore, "tradeIdeas", idea.id);
     
     try {
       await deleteDoc(docRef);
-      console.log("CRITICAL: NOTE_DELETE_SENT", idea.id);
       toast({ title: "Deleted", description: "Research note removed successfully." });
     } catch (err: any) {
-      console.error("CRITICAL: NOTE_DELETE_ERROR", err);
+      console.error("DELETE_ERROR", err);
       toast({ 
         title: "Delete Failed", 
-        description: `Error: ${err.code || err.message}`, 
+        description: `Error: ${err.code || "Permission Denied"}`, 
         variant: "destructive" 
       });
     } finally {
@@ -120,7 +114,7 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
                 )}
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                Posted {getPostedAt()} by {idea.createdBy}
+                Posted {getPostedAt()} by {idea.createdBy || "Inactive Member"}
               </p>
             </div>
           </div>

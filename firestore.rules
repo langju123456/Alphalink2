@@ -9,7 +9,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Simplified Admin check: Directly read from the user document.
+    // Direct and robust Admin check
     function isAdmin() {
       return isSignedIn() && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
@@ -23,6 +23,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
       // Users can update their profile but NOT their role
       allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId && request.resource.data.role == resource.data.role);
+      // Admin can delete any user
       allow delete: if isAdmin();
     }
 
@@ -39,7 +40,7 @@ service cloud.firestore {
     match /tradeIdeas/{tradeIdeaId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      // Admin or the original poster can update/delete
+      // Admin has absolute power; owners can manage their own
       allow update, delete: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
 
       match /comments/{commentId} {

@@ -4,10 +4,10 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
-import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore"
+import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc, query, where, getDocs, writeBatch } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon, Tag, Mail, Info } from "lucide-react"
+import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon, Tag, Mail, Info, UserX } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
 import {
@@ -29,7 +29,7 @@ export default function InvitesPage() {
   const [newCode, setNewCode] = useState<string | null>(null)
   const [inviteLabel, setInviteLabel] = useState("")
   const [recipient, setRecipient] = useState("")
-  const [mounted, setMounted] = useState(false)
+  const [isWiping, setIsWiping] = useState<string | null>(null)
 
   // Edit States
   const [editingInvite, setEditingInvite] = useState<any>(null)
@@ -43,10 +43,6 @@ export default function InvitesPage() {
   }, [user, firestore])
   
   const { data: userProfile, isLoading: isRoleLoading } = useDoc(userDocRef)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   useEffect(() => {
     if (!isRoleLoading && userProfile && userProfile.role !== "admin") {
@@ -98,7 +94,6 @@ export default function InvitesPage() {
       setRecipient("")
       toast({ title: t.common.success, description: `Code: ${code}` })
     }).catch((err) => {
-      console.error("INVITE_GEN_FAILED", err);
       toast({ title: "Error", description: "Could not generate code.", variant: "destructive" })
     }).finally(() => {
       setIsGenerating(false)
@@ -106,28 +101,42 @@ export default function InvitesPage() {
   }
 
   const deleteInvite = async (id: string) => {
-    console.log("CRITICAL: INVITE_DELETE_START", id);
-    
-    if (!firestore) {
-      toast({ title: "System Error", description: "Firestore not ready.", variant: "destructive" });
-      return;
-    }
-
-    toast({ title: "Deleting...", description: "Requesting removal from database." });
-
+    if (!firestore) return;
     const docRef = doc(firestore, "invites", id);
-    
+    deleteDoc(docRef).then(() => {
+      toast({ title: "Invite Deleted" });
+    });
+  }
+
+  const wipeMemberData = async (memberUid: string, inviteCode: string) => {
+    if (!firestore || isWiping) return;
+    if (!confirm("CRITICAL ACTION: This will delete the user profile AND all their trade ideas. Continue?")) return;
+
+    setIsWiping(memberUid);
+    toast({ title: "Wiping Member Data...", description: "Removing user and all associated research notes." });
+
     try {
-      await deleteDoc(docRef);
-      console.log("CRITICAL: INVITE_DELETE_SENT", id);
-      toast({ title: "Deleted", description: `Invite ${id} removed successfully.` });
-    } catch (err: any) {
-      console.error("CRITICAL: INVITE_DELETE_ERROR", err);
-      toast({ 
-        title: "Delete Failed", 
-        description: `Error: ${err.code || err.message || "Unknown error"}`, 
-        variant: "destructive" 
+      const batch = writeBatch(firestore);
+      
+      // 1. Delete User Document
+      batch.delete(doc(firestore, "users", memberUid));
+
+      // 2. Find and delete all trade ideas by this user
+      const ideasRef = collection(firestore, "tradeIdeas");
+      const q = query(ideasRef, where("userId", "==", memberUid));
+      const ideasSnap = await getDocs(q);
+      
+      ideasSnap.forEach((ideaDoc) => {
+        batch.delete(doc(firestore, "tradeIdeas", ideaDoc.id));
       });
+
+      await batch.commit();
+      toast({ title: "Wipe Complete", description: `User ${memberUid} and ${ideasSnap.size} posts removed.` });
+    } catch (err: any) {
+      console.error("WIPE_FAILED", err);
+      toast({ title: "Wipe Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsWiping(null);
     }
   }
 
@@ -135,9 +144,6 @@ export default function InvitesPage() {
     if (!firestore) return
     const nextStatus = currentStatus === "active" ? "disabled" : "active"
     updateDoc(doc(firestore, "invites", id), { status: nextStatus })
-      .catch(err => {
-        toast({ title: "Action Failed", variant: "destructive" })
-      })
   }
 
   const openEditDialog = (inv: any) => {
@@ -155,8 +161,6 @@ export default function InvitesPage() {
     }).then(() => {
       setEditingInvite(null)
       toast({ title: t.common.success })
-    }).catch(err => {
-      toast({ title: "Update Failed", variant: "destructive" })
     }).finally(() => {
       setIsUpdating(false)
     })
@@ -256,7 +260,7 @@ export default function InvitesPage() {
               <tr className="bg-secondary/30">
                 <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">{t.invites.tableCode}</th>
                 <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">{t.invites.tableRecipient}</th>
-                <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">Member Activity</th>
+                <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">Member Data</th>
                 <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em]">{t.invites.tableStatus}</th>
                 <th className="p-5 border-b border-border/60 uppercase text-[10px] text-muted-foreground font-black tracking-[0.15em] text-right">{t.invites.tableActions}</th>
               </tr>
@@ -288,15 +292,27 @@ export default function InvitesPage() {
                     </td>
                     <td className="p-5">
                       {reg ? (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                            <Check className="w-3.5 h-3.5" />
-                            <span>{reg.displayName}</span>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{reg.displayName}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+                              <Mail className="w-3 h-3" />
+                              <span className="font-medium">{reg.contactInfo}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
-                            <Mail className="w-3 h-3" />
-                            <span className="font-medium">{reg.contactInfo}</span>
-                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => wipeMemberData(reg.uid, inv.code)}
+                            disabled={isWiping === reg.uid}
+                            className="h-8 text-[10px] font-bold uppercase border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
+                          >
+                            {isWiping === reg.uid ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserX className="w-3 h-3 mr-1" />}
+                            Wipe All Data
+                          </Button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-muted-foreground/30 italic text-xs font-medium">
