@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
-import { collection, query, orderBy, doc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore"
+import { collection, query, orderBy, doc, serverTimestamp } from "firebase/firestore"
 import { 
   Award, 
   Calendar, 
@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 
 export default function HighlightsPage() {
   const { firestore } = useFirebase()
@@ -55,51 +56,41 @@ export default function HighlightsPage() {
   const [date, setDate] = useState("")
   const [desc, setDesc] = useState("")
   const [open, setOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAdd = (e: React.FormEvent) => {
     e.preventDefault()
     if (!firestore || !user || !userProfile) return
     
-    setIsSubmitting(true)
     const highlightId = crypto.randomUUID()
+    const docRef = doc(firestore, "highlights", highlightId)
     
-    try {
-      await setDoc(doc(firestore, "highlights", highlightId), {
-        id: highlightId,
-        userId: user.uid,
-        createdBy: userProfile.displayName || "Member",
-        role: userProfile.role,
-        title,
-        tickerOrUnderlying: ticker.toUpperCase(),
-        returnPct: Number(returnPct),
-        date,
-        description: desc,
-        createdAt: serverTimestamp()
-      })
-      
-      setOpen(false)
-      setTitle(""); setTicker(""); setReturnPct(""); setDate(""); setDesc("")
-      toast({ title: t.common.success })
-    } catch (err: any) {
-      console.error(err)
-      toast({ title: t.common.error, description: "Failed to publish highlight.", variant: "destructive" })
-    } finally {
-      setIsSubmitting(false)
+    const data = {
+      id: highlightId,
+      userId: user.uid,
+      createdBy: userProfile.displayName || "Member",
+      role: userProfile.role,
+      title,
+      tickerOrUnderlying: ticker.toUpperCase(),
+      returnPct: Number(returnPct),
+      date,
+      description: desc,
+      createdAt: serverTimestamp()
     }
+
+    setDocumentNonBlocking(docRef, data, { merge: true })
+    
+    setOpen(false)
+    setTitle(""); setTicker(""); setReturnPct(""); setDate(""); setDesc("")
+    toast({ title: t.common.success, description: "Performance highlight published." })
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!firestore) return
     if (!confirm("Are you sure you want to remove this highlight?")) return
 
-    try {
-      await deleteDoc(doc(firestore, "highlights", id))
-      toast({ title: t.common.success })
-    } catch (err) {
-      console.error(err)
-      toast({ title: t.common.error, description: "Failed to remove highlight.", variant: "destructive" })
-    }
+    const docRef = doc(firestore, "highlights", id)
+    deleteDocumentNonBlocking(docRef)
+    toast({ title: t.common.success, description: "Highlight removed." })
   }
 
   return (
@@ -130,8 +121,8 @@ export default function HighlightsPage() {
               <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-secondary" required />
               <Textarea placeholder={t.performance.desc} value={desc} onChange={e => setDesc(e.target.value)} className="bg-secondary" required />
               <DialogFooter>
-                <Button type="submit" disabled={isSubmitting} className="w-full bg-primary font-bold uppercase">
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.performance.publishBtn}
+                <Button type="submit" className="w-full bg-primary font-bold uppercase">
+                  {t.performance.publishBtn}
                 </Button>
               </DialogFooter>
             </form>

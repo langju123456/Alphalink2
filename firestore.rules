@@ -22,11 +22,16 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      // Use getAfter if checking data during the same request, 
+      // but for isAdmin, we usually check existing state.
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isAdmin() {
-      return isSignedIn() && (getUserData().role == 'admin' || request.auth.uid == 'SYSTEM_ADMIN_UID_OVERRIDE');
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        getUserData().role == 'admin'
+      );
     }
 
     // --- COLLECTION RULES ---
