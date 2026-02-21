@@ -1,3 +1,4 @@
+
 "use client"
 
 import { TradeIdea } from "@/lib/types"
@@ -66,33 +67,30 @@ export function TradeIdeaCard({ idea }: { idea: TradeIdea }) {
     setIsDeleting(true)
 
     const docPath = `tradeIdeas/${idea.id}`
+    console.log("DELETE_CLICK", { id: idea.id, collection: "tradeIdeas", docPath })
+
     const docRef = doc(firestore, "tradeIdeas", idea.id)
     
-    console.log(`[TERMINAL] Initiating deletion for: ${docPath}`)
-
     deleteDoc(docRef)
       .then(() => {
         toast({ 
           title: "DELETE SUCCESS", 
-          description: `Note ID ${idea.id.substring(0, 8)} removed successfully.` 
+          description: `Deleted ${idea.id}` 
         })
       })
-      .catch(async (err) => {
-        console.error(`[TERMINAL] Delete failed for ${docPath}:`, err.code || err.message)
+      .catch(async (err: any) => {
+        console.error("DELETE_FAILED", { path: docPath, code: err.code, message: err.message })
         
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
           operation: 'delete',
         })
         
-        // Emit for the global listener (Developer overlay)
         errorEmitter.emit('permission-error', permissionError)
         
         toast({ 
           title: "DELETE FAILED", 
-          description: err.code === 'permission-denied' 
-            ? "Access Denied: Only Admin or the Original Author can delete this." 
-            : "Operation could not be completed.",
+          description: `Delete failed: ${err.code} ${err.message}`,
           variant: "destructive" 
         })
       })
