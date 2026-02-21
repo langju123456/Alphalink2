@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useFirebase, useUser } from "@/firebase"
 import { signInAnonymously, signOut } from "firebase/auth"
-import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"
 import { Role } from "@/lib/types"
 import {
   Select,
@@ -45,7 +45,20 @@ export default function LandingPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { auth, firestore } = useFirebase()
-  const { isUserLoading } = useUser()
+  const { user, isUserLoading } = useUser()
+
+  // Effect to redirect already logged in users with complete profiles
+  useEffect(() => {
+    async function checkExistingProfile() {
+      if (!isUserLoading && user && firestore) {
+        const userDoc = await getDoc(doc(firestore, "users", user.uid))
+        if (userDoc.exists() && userDoc.data().displayName) {
+          router.push("/dashboard/feed")
+        }
+      }
+    }
+    checkExistingProfile()
+  }, [user, isUserLoading, firestore, router])
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +73,7 @@ export default function LandingPage() {
 
       let role: Role | null = null
 
+      // 1. Verify Access Code
       if (finalCode === ADMIN_BOOTSTRAP_CODE) {
         role = 'admin'
       } else {
@@ -75,7 +89,20 @@ export default function LandingPage() {
 
       if (role) {
         setAssignedRole(role)
-        setStep('profile')
+        
+        // 2. Check if user already has a profile in Firestore
+        const userDoc = await getDoc(doc(firestore, "users", userId))
+        if (userDoc.exists() && userDoc.data().displayName) {
+          // Profile exists, skip onboarding
+          toast({
+            title: "Session Resumed",
+            description: `Welcome back, ${userDoc.data().displayName}.`,
+          })
+          router.push("/dashboard/feed")
+        } else {
+          // No profile, show onboarding step
+          setStep('profile')
+        }
       } else {
         await signOut(auth)
         toast({
