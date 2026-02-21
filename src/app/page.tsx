@@ -47,7 +47,6 @@ export default function LandingPage() {
   const { auth, firestore } = useFirebase()
   const { user, isUserLoading } = useUser()
 
-  // 1. Initial check: If user is already logged in AND has a complete profile, jump to dashboard
   useEffect(() => {
     async function checkExistingProfile() {
       if (!isUserLoading && user && firestore) {
@@ -68,13 +67,11 @@ export default function LandingPage() {
     const finalCode = code.trim().toUpperCase()
 
     try {
-      // Step A: Perform anonymous login to get a UID
       const userCredential = await signInAnonymously(auth)
       const userId = userCredential.user.uid
 
       let role: Role | null = null
 
-      // Step B: Verify the Access Code
       if (finalCode === ADMIN_BOOTSTRAP_CODE) {
         role = 'admin'
       } else {
@@ -91,41 +88,38 @@ export default function LandingPage() {
       if (role) {
         setAssignedRole(role)
         
-        // Step C: Check if this specific User (UID) is already registered in Firestore
         const userDocRef = doc(firestore, "users", userId)
         const userDoc = await getDoc(userDocRef)
 
-        if (userDoc.exists() && userDoc.data().displayName) {
-          // USER IS REGISTERED: Jump in directly
-          toast({
-            title: "Access Granted",
-            description: `Welcome back to the terminal.`,
-          })
+        if (role === 'admin') {
+          // ADMIN BYPASS: Create profile automatically and enter
+          await setDoc(userDocRef, {
+            uid: userId,
+            role: 'admin',
+            displayName: 'System Administrator',
+            contactType: 'email',
+            contactInfo: 'admin@alphalink.terminal',
+            accessCode: finalCode,
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp()
+          }, { merge: true })
+          
+          toast({ title: "Admin Access Granted", description: "Initializing secure terminal..." })
+          router.push("/dashboard/feed")
+        } else if (userDoc.exists() && userDoc.data().displayName) {
+          toast({ title: "Access Granted", description: `Welcome back to the terminal.` })
           router.push("/dashboard/feed")
         } else {
-          // USER NOT REGISTERED: Show registration form (Onboarding gate)
           setStep('profile')
-          toast({
-            title: "Code Verified",
-            description: "Please complete your member profile to continue.",
-          })
+          toast({ title: "Code Verified", description: "Please complete your member profile to continue." })
         }
       } else {
-        // Invalid code
         await signOut(auth)
-        toast({
-          title: "Access Denied",
-          description: "Invalid or disabled access code.",
-          variant: "destructive"
-        })
+        toast({ title: "Access Denied", description: "Invalid or disabled access code.", variant: "destructive" })
       }
     } catch (err: any) {
       console.error("Login Error:", err)
-      toast({
-        title: "Connection Error",
-        description: "Could not verify credentials.",
-        variant: "destructive"
-      })
+      toast({ title: "Connection Error", description: "Could not verify credentials.", variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -138,7 +132,6 @@ export default function LandingPage() {
 
     try {
       const userId = auth.currentUser.uid
-      // Save full profile data to Firestore User entity
       await setDoc(doc(firestore, "users", userId), {
         uid: userId,
         role: assignedRole,
@@ -150,18 +143,10 @@ export default function LandingPage() {
         createdAt: serverTimestamp()
       }, { merge: true })
 
-      toast({
-        title: "Registration Complete",
-        description: `Your profile has been created. Initializing session...`,
-      })
-      
+      toast({ title: "Registration Complete", description: `Your profile has been created. Initializing session...` })
       router.push("/dashboard/feed")
     } catch (err) {
-      toast({
-        title: "Registration Error",
-        description: "Could not finalize your profile.",
-        variant: "destructive"
-      })
+      toast({ title: "Registration Error", description: "Could not finalize your profile.", variant: "destructive" })
     } finally {
       setIsLoading(false)
     }

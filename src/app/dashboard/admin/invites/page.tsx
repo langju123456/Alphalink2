@@ -7,7 +7,7 @@ import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/
 import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon, Tag } from "lucide-react"
+import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon, Tag, Mail, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
 import {
@@ -48,7 +48,6 @@ export default function InvitesPage() {
     setMounted(true)
   }, [])
 
-  // Admin access gate
   useEffect(() => {
     if (!isRoleLoading && userProfile && userProfile.role !== "admin") {
       router.push("/dashboard/feed")
@@ -60,7 +59,13 @@ export default function InvitesPage() {
     return collection(firestore, "invites");
   }, [firestore, userProfile]);
 
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !userProfile || userProfile.role !== "admin") return null;
+    return collection(firestore, "users");
+  }, [firestore, userProfile]);
+
   const { data: invites, isLoading: isInvitesLoading } = useCollection(invitesQuery)
+  const { data: registeredUsers } = useCollection(usersQuery)
 
   if (isRoleLoading || (userProfile && userProfile.role !== "admin")) {
     return (
@@ -82,7 +87,7 @@ export default function InvitesPage() {
         id: inviteId,
         code: code,
         label: inviteLabel.trim() || "General",
-        recipient: recipient.trim() || "Unknown",
+        recipient: recipient.trim() || "Unassigned",
         role: "member",
         status: "active",
         createdAt: serverTimestamp(),
@@ -92,16 +97,9 @@ export default function InvitesPage() {
       setNewCode(code)
       setInviteLabel("")
       setRecipient("")
-      toast({
-        title: "Invite Generated",
-        description: `Code: ${code} for ${recipient || "Unknown"}`
-      })
+      toast({ title: "Invite Generated", description: `Code: ${code}` })
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description: "Could not generate code.",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Could not generate code.", variant: "destructive" })
     } finally {
       setIsGenerating(false)
     }
@@ -110,19 +108,10 @@ export default function InvitesPage() {
   const deleteInvite = async (id: string) => {
     if (!confirm(t.invites.confirmDelete)) return
     try {
-      // PERMANENT DELETION FROM FIRESTORE
       await deleteDoc(doc(firestore, "invites", id))
-      toast({ 
-        title: "Code Deleted", 
-        description: "The invitation has been permanently removed." 
-      })
+      toast({ title: "Code Deleted", description: "Permanently removed." })
     } catch (err: any) {
-      console.error(err)
-      toast({ 
-        title: "Error", 
-        description: "Failed to delete invitation.",
-        variant: "destructive" 
-      })
+      toast({ title: "Error", description: "Failed to delete.", variant: "destructive" })
     }
   }
 
@@ -147,7 +136,7 @@ export default function InvitesPage() {
     try {
       await updateDoc(doc(firestore, "invites", editingInvite.id), {
         label: editLabelValue.trim() || "General",
-        recipient: editRecipientValue.trim() || "Unknown"
+        recipient: editRecipientValue.trim() || "Unassigned"
       })
       setEditingInvite(null)
       toast({ title: t.common.success })
@@ -156,6 +145,12 @@ export default function InvitesPage() {
     } finally {
       setIsUpdating(false)
     }
+  }
+
+  // Find user data that matches this invite code
+  const getRegisteredInfo = (code: string) => {
+    const matchedUser = registeredUsers?.find(u => u.accessCode === code && u.role !== 'admin');
+    return matchedUser;
   }
 
   return (
@@ -200,9 +195,7 @@ export default function InvitesPage() {
       {newCode && (
         <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
           <div>
-            <p className="text-[10px] uppercase font-bold text-emerald-400 tracking-widest mb-1">
-              {t.invites.newlyGenerated}
-            </p>
+            <p className="text-[10px] uppercase font-bold text-emerald-400 tracking-widest mb-1">{t.invites.newlyGenerated}</p>
             <p className="text-4xl font-code font-bold text-emerald-400 tracking-tighter">{newCode}</p>
           </div>
           <Button onClick={() => navigator.clipboard.writeText(newCode)} variant="outline" className="border-emerald-500/40 text-emerald-400">
@@ -219,7 +212,7 @@ export default function InvitesPage() {
               <tr className="bg-secondary/50 border-b border-border">
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableCode}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableRecipient}</th>
-                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableLabel}</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">Registered User info</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableStatus}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest text-right">{t.invites.tableActions}</th>
               </tr>
@@ -229,41 +222,64 @@ export default function InvitesPage() {
                 <tr><td colSpan={5} className="p-10 text-center italic">Loading terminal data...</td></tr>
               ) : invites?.length === 0 ? (
                 <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">No active invitations found.</td></tr>
-              ) : invites?.map((inv: any) => (
-                <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors group">
-                  <td className="p-4 font-code font-bold text-foreground">{inv.code}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <UserIcon className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs font-semibold">{inv.recipient || "Unknown"}</span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs">{inv.label}</span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${inv.status === "active" ? "text-emerald-400 bg-emerald-400/10" : "text-rose-400 bg-rose-400/10"}`}>
-                      {inv.status === "active" ? t.invites.active : t.invites.disabled}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => openEditDialog(inv)} className="text-muted-foreground hover:text-primary">
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => toggleInvite(inv.id, inv.status)} className="text-[10px] uppercase">
-                        {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteInvite(inv.id)} className="text-rose-500 hover:bg-rose-500/10">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : invites?.map((inv: any) => {
+                const reg = getRegisteredInfo(inv.code);
+                return (
+                  <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors group">
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="font-code font-bold text-foreground text-lg">{inv.code}</span>
+                        <span className="text-[9px] text-muted-foreground uppercase flex items-center gap-1">
+                          <Tag className="w-2 h-2" /> {inv.label}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-xs font-semibold">{inv.recipient || "Unassigned"}</span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      {reg ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-emerald-400">
+                            <Check className="w-3 h-3" />
+                            <span className="font-bold">{reg.displayName}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <Mail className="w-2.5 h-2.5" />
+                            <span>{reg.contactInfo}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-muted-foreground/40 italic text-xs">
+                          <Info className="w-3 h-3" />
+                          <span>Not activated yet</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${inv.status === "active" ? "text-emerald-400 bg-emerald-400/10" : "text-rose-400 bg-rose-400/10"}`}>
+                        {inv.status === "active" ? t.invites.active : t.invites.disabled}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => openEditDialog(inv)} className="text-muted-foreground hover:text-primary">
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => toggleInvite(inv.id, inv.status)} className="text-[10px] uppercase">
+                          {inv.status === "active" ? t.invites.disableAction : t.invites.enableAction}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => deleteInvite(inv.id)} className="text-rose-500 hover:bg-rose-500/10">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
