@@ -24,11 +24,13 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
+import { useLanguage } from "@/components/language-provider"
 
 export default function HighlightsPage() {
   const { firestore } = useFirebase()
   const { user } = useUser()
   const { toast } = useToast()
+  const { t } = useLanguage()
 
   const userDocRef = useMemoFirebase(() => {
     if (!user || !firestore) return null
@@ -74,10 +76,10 @@ export default function HighlightsPage() {
       
       setOpen(false)
       setTitle(""); setTicker(""); setReturnPct(""); setDate(""); setDesc("")
-      toast({ title: "Highlight Published" })
+      toast({ title: t.common.success })
     } catch (err: any) {
       console.error(err)
-      toast({ title: "Error", description: "Failed to publish highlight.", variant: "destructive" })
+      toast({ title: t.common.error, description: "Failed to publish highlight.", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -87,10 +89,10 @@ export default function HighlightsPage() {
     if (!firestore) return
     try {
       await deleteDoc(doc(firestore, "highlights", id))
-      toast({ title: "Highlight Removed" })
+      toast({ title: t.common.success })
     } catch (err) {
       console.error(err)
-      toast({ title: "Error", description: "Failed to remove highlight.", variant: "destructive" })
+      toast({ title: t.common.error, description: "Failed to remove highlight.", variant: "destructive" })
     }
   }
 
@@ -98,32 +100,32 @@ export default function HighlightsPage() {
     <div className="space-y-8">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-headline font-bold text-white">Alpha Desk Performance</h1>
-          <p className="text-muted-foreground text-sm">Verified trade results and community win highlights.</p>
+          <h1 className="text-3xl font-headline font-bold text-white">{t.performance.title}</h1>
+          <p className="text-muted-foreground text-sm">{t.performance.description}</p>
         </div>
         {isAdmin && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90 font-bold gap-2">
                 <Plus className="w-4 h-4" />
-                Add Win Highlight
+                {t.performance.addWin}
               </Button>
             </DialogTrigger>
             <DialogContent className="terminal-card bg-card border-border">
               <DialogHeader>
-                <DialogTitle className="font-headline">Publish Performance Win</DialogTitle>
+                <DialogTitle className="font-headline">{t.performance.publishWin}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleAdd} className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <Input placeholder="Ticker" value={ticker} onChange={e => setTicker(e.target.value)} className="bg-secondary" required />
-                  <Input placeholder="Return % (e.g. 45)" type="number" value={returnPct} onChange={e => setReturnPct(e.target.value)} className="bg-secondary" required />
+                  <Input placeholder={t.performance.ticker} value={ticker} onChange={e => setTicker(e.target.value)} className="bg-secondary" required />
+                  <Input placeholder={t.performance.return} type="number" value={returnPct} onChange={e => setReturnPct(e.target.value)} className="bg-secondary" required />
                 </div>
-                <Input placeholder="Title / Strategy" value={title} onChange={e => setTitle(e.target.value)} className="bg-secondary" required />
+                <Input placeholder={t.performance.strategy} value={title} onChange={e => setTitle(e.target.value)} className="bg-secondary" required />
                 <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-secondary" required />
-                <Textarea placeholder="Description..." value={desc} onChange={e => setDesc(e.target.value)} className="bg-secondary" required />
+                <Textarea placeholder={t.performance.desc} value={desc} onChange={e => setDesc(e.target.value)} className="bg-secondary" required />
                 <DialogFooter>
                   <Button type="submit" disabled={isSubmitting} className="w-full bg-primary font-bold uppercase">
-                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Publish to Wall of Fame"}
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.performance.publishBtn}
                   </Button>
                 </DialogFooter>
               </form>
@@ -140,7 +142,7 @@ export default function HighlightsPage() {
         ) : !highlights || highlights.length === 0 ? (
           <div className="col-span-full py-20 text-center terminal-card bg-secondary/10 flex flex-col items-center justify-center space-y-4">
             <TrendingUp className="w-12 h-12 text-muted-foreground opacity-20" />
-            <p className="text-muted-foreground font-semibold">No performance highlights documented yet.</p>
+            <p className="text-muted-foreground font-semibold">{t.performance.noHighlights}</p>
           </div>
         ) : highlights.map((h: any) => (
           <div key={h.id} className="terminal-card bg-secondary/20 relative group">
@@ -151,7 +153,7 @@ export default function HighlightsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-headline font-bold text-emerald-400">+{h.returnPct}%</p>
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Return</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{t.performance.returnLabel}</p>
                 </div>
               </div>
               <h3 className="text-lg font-bold text-white mb-2">{h.title}</h3>
@@ -163,7 +165,7 @@ export default function HighlightsPage() {
                 </div>
                 <div className="flex items-center gap-1 text-primary">
                   <Award className="w-3 h-3" />
-                  Desk Verified
+                  {t.performance.verified}
                 </div>
               </div>
             </div>

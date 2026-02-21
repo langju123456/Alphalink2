@@ -12,6 +12,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { chatWithAlphaBot } from "@/ai/flows/chat-with-alpha-bot"
+import { useLanguage } from "@/components/language-provider"
 
 interface Message {
   id: string
@@ -20,11 +21,12 @@ interface Message {
 }
 
 export default function AssistantPage() {
+  const { t } = useLanguage()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       role: "assistant",
-      content: "Hello, I am AlphaBot. How can I assist with your market research or technical analysis today? I specialize in Stock and Options scenario analysis."
+      content: t.assistant.welcome
     }
   ])
   const [input, setInput] = useState("")
@@ -78,8 +80,8 @@ export default function AssistantPage() {
           <Cpu className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-3xl font-headline font-bold text-white">AlphaBot AI</h1>
-          <p className="text-muted-foreground text-sm">Research Assistant & Market Intelligence Engine</p>
+          <h1 className="text-3xl font-headline font-bold text-white">{t.assistant.title}</h1>
+          <p className="text-muted-foreground text-sm">{t.assistant.description}</p>
         </div>
       </header>
 
@@ -103,7 +105,7 @@ export default function AssistantPage() {
                     <Sparkles className="w-3 h-3 text-primary" />
                   ) : null}
                   <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">
-                    {msg.role === "assistant" ? "AlphaBot v2.5" : "Member Terminal"}
+                    {msg.role === "assistant" ? "AlphaBot v2.5" : t.nav.member}
                   </span>
                 </div>
                 <div className="text-sm leading-relaxed whitespace-pre-line prose prose-invert max-w-none">
@@ -116,7 +118,7 @@ export default function AssistantPage() {
             <div className="flex justify-start">
               <div className="bg-secondary/50 border border-border p-4 rounded-lg flex items-center gap-3">
                 <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Analyzing Market Data...</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t.assistant.analyzing}</span>
               </div>
             </div>
           )}
@@ -127,7 +129,7 @@ export default function AssistantPage() {
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about SPY analysis, vertical spreads, or risk management..."
+              placeholder={t.assistant.placeholder}
               className="bg-card border-border h-14 pl-6 pr-16 focus:ring-primary text-white"
               disabled={isLoading}
             />
@@ -142,7 +144,7 @@ export default function AssistantPage() {
           </form>
           <div className="flex items-center gap-2 mt-4 text-[10px] text-muted-foreground uppercase font-bold tracking-tight">
             <AlertCircle className="w-3 h-3" />
-            For educational purposes only • Never financial advice • Gemini AI Core
+            {t.assistant.disclaimer}
           </div>
         </div>
       </div>

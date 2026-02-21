@@ -4,6 +4,7 @@ import { Inter, Space_Grotesk } from 'next/font/google';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from "@/firebase/client-provider"
 import { ThemeProvider } from "@/components/theme-provider"
+import { LanguageProvider } from "@/components/language-provider"
 
 const inter = Inter({
   subsets: ['latin'],
@@ -37,7 +38,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <FirebaseClientProvider>
-            {children}
+            <LanguageProvider>
+              {children}
+            </LanguageProvider>
           </FirebaseClientProvider>
           <Toaster />
         </ThemeProvider>

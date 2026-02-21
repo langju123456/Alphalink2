@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -12,13 +11,15 @@ import {
   LogOut,
   Award,
   Moon,
-  Sun
+  Sun,
+  Languages
 } from "lucide-react"
 import { useAuth, useUser, useDoc, useMemoFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
 import { getFirestore } from "firebase/firestore"
 import { Button } from "./ui/button"
 import { useTheme } from "next-themes"
+import { useLanguage } from "./language-provider"
 
 export function DashboardNav() {
   const pathname = usePathname()
@@ -26,6 +27,7 @@ export function DashboardNav() {
   const auth = useAuth()
   const { user } = useUser()
   const { theme, setTheme } = useTheme()
+  const { language, setLanguage, t } = useLanguage()
   
   const { firestore } = useMemoFirebase(() => ({ firestore: getFirestore() }), [])
   
@@ -38,18 +40,22 @@ export function DashboardNav() {
   const isAdmin = userProfile?.role === "admin"
 
   const links = [
-    { href: "/dashboard/feed", icon: LayoutGrid, label: "Market Feed" },
-    { href: "/dashboard/highlights", icon: Award, label: "Performance" },
-    { href: "/dashboard/assistant", icon: MessageSquare, label: "AlphaBot AI" },
+    { href: "/dashboard/feed", icon: LayoutGrid, label: t.nav.marketFeed },
+    { href: "/dashboard/highlights", icon: Award, label: t.nav.performance },
+    { href: "/dashboard/assistant", icon: MessageSquare, label: t.nav.alphaBot },
   ]
 
   if (isAdmin) {
-    links.push({ href: "/dashboard/admin/invites", icon: Users, label: "Invites" })
+    links.push({ href: "/dashboard/admin/invites", icon: Users, label: t.nav.invites })
   }
 
   const handleLogout = async () => {
     await auth.signOut()
     router.push("/")
+  }
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'zh' : 'en')
   }
 
   return (
@@ -83,8 +89,8 @@ export function DashboardNav() {
       </nav>
 
       <div className="p-4 border-t border-border mt-auto space-y-2">
-        <div className="flex items-center justify-between px-4 py-2">
-           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Theme Mode</p>
+        <div className="flex items-center justify-between px-4 py-1">
+           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.nav.theme}</p>
            <button 
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="p-1.5 rounded-md hover:bg-secondary/50 text-muted-foreground hover:text-primary transition-colors"
@@ -93,9 +99,22 @@ export function DashboardNav() {
            </button>
         </div>
 
+        <div className="flex items-center justify-between px-4 py-1">
+           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.nav.language}</p>
+           <button 
+            onClick={toggleLanguage}
+            className="p-1.5 rounded-md hover:bg-secondary/50 text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+           >
+             <Languages className="w-4 h-4" />
+             <span className="text-[10px] font-bold">{language === 'en' ? 'EN' : '中'}</span>
+           </button>
+        </div>
+
         <div className="px-4 py-3 rounded-md bg-secondary/30">
-          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Session Role</p>
-          <p className="text-sm font-semibold capitalize text-primary">{userProfile?.role || "Terminal User"}</p>
+          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">{t.nav.sessionRole}</p>
+          <p className="text-sm font-semibold capitalize text-primary">
+            {userProfile?.role === "admin" ? t.nav.admin : t.nav.member}
+          </p>
         </div>
         
         <Button 
@@ -104,7 +123,7 @@ export function DashboardNav() {
           className="w-full flex items-center justify-start gap-3 px-4 py-3 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
         >
           <LogOut className="w-4 h-4" />
-          Logout
+          {t.nav.logout}
         </Button>
       </div>
     </div>
