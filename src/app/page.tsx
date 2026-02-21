@@ -4,56 +4,82 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { storage, ADMIN_BOOTSTRAP_CODE } from "@/lib/storage"
-import { ShieldAlert, TrendingUp, Cpu, Lock, Sparkles } from "lucide-react"
+import { ShieldAlert, TrendingUp, Cpu, Lock, Sparkles, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useFirebase, useUser } from "@/firebase"
+import { signInAnonymously } from "firebase/auth"
+import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore"
+
+const ADMIN_BOOTSTRAP_CODE = 'ALPHA_ADMIN_2024';
 
 export default function LandingPage() {
   const [code, setCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const { auth, firestore } = useFirebase()
+  const { user, isUserLoading } = useUser()
 
   useEffect(() => {
-    if (storage.getSession()) {
+    if (user && !isUserLoading) {
       router.push("/dashboard/feed")
     }
-  }, [router])
+  }, [user, isUserLoading, router])
 
-  const handleLogin = (e?: React.FormEvent, overrideCode?: string) => {
+  const handleLogin = async (e?: React.FormEvent, overrideCode?: string) => {
     if (e) e.preventDefault()
     setIsLoading(true)
 
-    const finalCode = overrideCode || code
+    const finalCode = (overrideCode || code).trim().toUpperCase()
 
-    // Check admin bootstrap
-    if (finalCode === ADMIN_BOOTSTRAP_CODE) {
-      storage.saveSession({
-        role: "admin",
-        accessCode: finalCode,
-        loggedInAt: Date.now()
-      })
-      router.push("/dashboard/feed")
-      return
-    }
+    try {
+      let role: 'admin' | 'member' | null = null
 
-    // Check member invites
-    const invites = storage.getInvites()
-    const validInvite = invites.find(inv => inv.code === finalCode && inv.status === "active")
+      if (finalCode === ADMIN_BOOTSTRAP_CODE) {
+        role = 'admin'
+      } else {
+        // Check Firestore for valid invite code
+        const invitesRef = collection(firestore, "invites")
+        const q = query(invitesRef, where("code", "==", finalCode), where("status", "==", "active"))
+        const querySnapshot = await getDocs(q)
+        
+        if (!querySnapshot.empty) {
+          role = 'member'
+        }
+      }
 
-    if (validInvite) {
-      storage.saveSession({
-        role: "member",
-        accessCode: finalCode,
-        loggedInAt: Date.now()
-      })
-      router.push("/dashboard/feed")
-    } else {
+      if (role) {
+        const userCredential = await signInAnonymously(auth)
+        const userId = userCredential.user.uid
+        
+        // Create/Update user profile in Firestore
+        await setDoc(doc(firestore, "users", userId), {
+          uid: userId,
+          role: role,
+          accessCode: finalCode,
+          updatedAt: serverTimestamp()
+        }, { merge: true })
+
+        toast({
+          title: "Access Granted",
+          description: `Welcome to the AlphaLink terminal as ${role}.`,
+        })
+        router.push("/dashboard/feed")
+      } else {
+        toast({
+          title: "Access Denied",
+          description: "Invalid or disabled access code. Please contact an admin.",
+          variant: "destructive"
+        })
+      }
+    } catch (err: any) {
+      console.error(err)
       toast({
-        title: "Access Denied",
-        description: "Invalid or disabled access code. Please contact an admin.",
+        title: "Connection Error",
+        description: "Could not connect to the authentication server.",
         variant: "destructive"
       })
+    } finally {
       setIsLoading(false)
     }
   }
@@ -61,6 +87,14 @@ export default function LandingPage() {
   const handleDemoAccess = () => {
     setCode(ADMIN_BOOTSTRAP_CODE)
     handleLogin(undefined, ADMIN_BOOTSTRAP_CODE)
+  }
+
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    )
   }
 
   return (
@@ -98,7 +132,7 @@ export default function LandingPage() {
               <Input
                 type="password"
                 placeholder="Enter Access Code"
-                className="pl-10 h-12 bg-secondary border-border focus:ring-primary"
+                className="pl-10 h-12 bg-secondary border-border focus:ring-primary uppercase"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 required
@@ -109,6 +143,7 @@ export default function LandingPage() {
               className="w-full h-12 font-bold uppercase tracking-wider bg-primary hover:bg-primary/90"
               disabled={isLoading}
             >
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {isLoading ? "Validating..." : "Enter Terminal"}
             </Button>
           </form>

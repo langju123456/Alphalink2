@@ -1,28 +1,34 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { storage } from "@/lib/storage"
 import { DashboardNav } from "@/components/nav"
+import { useUser } from "@/firebase"
+import { Loader2 } from "lucide-react"
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [isReady, setIsReady] = useState(false)
   const router = useRouter()
+  const { user, isUserLoading } = useUser()
 
   useEffect(() => {
-    const session = storage.getSession()
-    if (!session) {
+    if (!isUserLoading && !user) {
       router.push("/")
-    } else {
-      setIsReady(true)
     }
-  }, [router])
+  }, [user, isUserLoading, router])
 
-  if (!isReady) return null
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) return null
 
   return (
     <div className="flex bg-background min-h-screen">

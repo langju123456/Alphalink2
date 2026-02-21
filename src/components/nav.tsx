@@ -11,14 +11,27 @@ import {
   LogOut,
   Award
 } from "lucide-react"
-import { storage } from "@/lib/storage"
+import { useAuth, useUser, useDoc, useMemoFirebase } from "@/firebase"
+import { doc } from "firebase/firestore"
+import { getFirestore } from "firebase/firestore"
 import { Button } from "./ui/button"
 
 export function DashboardNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const session = storage.getSession()
-  const isAdmin = session?.role === "admin"
+  const auth = useAuth()
+  const { user } = useUser()
+  
+  // Use a fallback firestore getter for the memo hook if the main useFirebase isn't used here directly
+  const { firestore } = useMemoFirebase(() => ({ firestore: getFirestore() }), [])
+  
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null
+    return doc(firestore, "users", user.uid)
+  }, [user, firestore])
+  
+  const { data: userProfile } = useDoc(userDocRef)
+  const isAdmin = userProfile?.role === "admin"
 
   const links = [
     { href: "/dashboard/feed", icon: LayoutGrid, label: "Market Feed" },
@@ -30,8 +43,8 @@ export function DashboardNav() {
     links.push({ href: "/dashboard/admin/invites", icon: Users, label: "Invites" })
   }
 
-  const handleLogout = () => {
-    storage.clearSession()
+  const handleLogout = async () => {
+    await auth.signOut()
     router.push("/")
   }
 
@@ -68,7 +81,7 @@ export function DashboardNav() {
       <div className="p-4 border-t border-border mt-auto">
         <div className="px-4 py-3 mb-4 rounded-md bg-secondary/30">
           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Session Role</p>
-          <p className="text-sm font-semibold capitalize text-primary">{session?.role || "Guest"}</p>
+          <p className="text-sm font-semibold capitalize text-primary">{userProfile?.role || "Terminal User"}</p>
         </div>
         <Button 
           variant="ghost" 
