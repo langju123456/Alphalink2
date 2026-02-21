@@ -67,11 +67,13 @@ export default function LandingPage() {
     const finalCode = code.trim().toUpperCase()
 
     try {
+      // Step 1: Initialize temporary session to query firestore
       const userCredential = await signInAnonymously(auth)
       const userId = userCredential.user.uid
 
       let role: Role | null = null
 
+      // Step 2: Validate the code
       if (finalCode === ADMIN_BOOTSTRAP_CODE) {
         role = 'admin'
       } else {
@@ -85,6 +87,7 @@ export default function LandingPage() {
         }
       }
 
+      // Step 3: Handle authorization
       if (role) {
         setAssignedRole(role)
         
@@ -107,13 +110,16 @@ export default function LandingPage() {
           toast({ title: "Admin Access Granted", description: "Initializing secure terminal..." })
           router.push("/dashboard/feed")
         } else if (userDoc.exists() && userDoc.data().displayName) {
+          // Existing registered member
           toast({ title: "Access Granted", description: `Welcome back to the terminal.` })
           router.push("/dashboard/feed")
         } else {
+          // New member with valid code -> show registration
           setStep('profile')
           toast({ title: "Code Verified", description: "Please complete your member profile to continue." })
         }
       } else {
+        // Invalid code -> clear session
         await signOut(auth)
         toast({ title: "Access Denied", description: "Invalid or disabled access code.", variant: "destructive" })
       }
@@ -184,10 +190,10 @@ export default function LandingPage() {
             <form onSubmit={handleVerifyCode} className="space-y-4">
               <div className="relative">
                 <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                <Input
+                <input
                   type="password"
                   placeholder="Enter Terminal Access Code"
-                  className="pl-10 h-12 bg-secondary border-border focus:ring-primary uppercase font-code tracking-widest"
+                  className="w-full pl-10 h-12 bg-secondary border border-border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary uppercase font-code tracking-widest placeholder:text-muted-foreground/50"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   required
