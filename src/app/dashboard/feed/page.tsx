@@ -19,7 +19,6 @@ export default function FeedPage() {
   }, [user, firestore])
   
   const { data: userProfile } = useDoc(userDocRef)
-  const isAdmin = userProfile?.role === "admin"
 
   const tradeIdeasQuery = useMemoFirebase(() => {
     if (!firestore) return null
@@ -35,7 +34,8 @@ export default function FeedPage() {
           <h1 className="text-3xl font-headline font-bold text-white mb-2">{t.feed.title}</h1>
           <p className="text-muted-foreground text-sm">{t.feed.description}</p>
         </div>
-        {isAdmin && <PostTradeIdea />}
+        {/* All authenticated users with a profile can now post */}
+        {userProfile && <PostTradeIdea />}
       </header>
 
       <div className="flex flex-col md:flex-row gap-4 items-center">

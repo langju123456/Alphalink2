@@ -21,7 +21,6 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      // Use getAfter to ensure we can read the data even if it was just written in this transaction
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
@@ -34,22 +33,22 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      // Allow initial creation of user profile
       allow create: if isOwner(userId);
-      // Only admins can change roles, users can only update their own profile without changing role
       allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
     }
 
     match /invites/{inviteId} {
-      // Allow signed-in users (even those without a role yet) to query for an invite code's existence
       allow list: if isSignedIn();
       allow get, create, update, delete: if isAdmin();
     }
 
     match /tradeIdeas/{tradeIdeaId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      // Allow any signed-in user to create a trade idea (Forum style)
+      allow create: if isSignedIn();
+      // Allow admins to moderate, and owners to potentially edit/delete (if added later)
+      allow update, delete: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
 
       match /comments/{commentId} {
         allow get, list: if isSignedIn();

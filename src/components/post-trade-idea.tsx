@@ -76,7 +76,7 @@ export function PostTradeIdea() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!firestore || !userProfile) return
+    if (!firestore || !userProfile || !user) return
     setIsLoading(true)
 
     try {
@@ -106,13 +106,15 @@ export function PostTradeIdea() {
       const ideaId = crypto.randomUUID()
       const ideaData = {
         id: ideaId,
+        userId: user.uid,
         instrumentType: type,
         note,
         aiSummaryBullets: aiResponse.aiSummaryBullets,
         riskLine: aiResponse.riskLine,
         payoffHint: aiResponse.payoffHint,
         createdAt: serverTimestamp(),
-        createdBy: userProfile.role === 'admin' ? 'Admin' : 'Member',
+        // Use real display name for the feed
+        createdBy: userProfile.displayName || (userProfile.role === 'admin' ? 'Admin' : 'Member'),
         likeCount: 0,
         ...(type === "STOCK" ? {
           ticker: ticker.toUpperCase(),
@@ -132,7 +134,7 @@ export function PostTradeIdea() {
       await setDoc(doc(firestore, "tradeIdeas", ideaId), ideaData)
       
       setOpen(false)
-      toast({ title: "Trade Idea Published", description: "AI research summary generated and posted to feed." })
+      toast({ title: "Trade Idea Published", description: "AI research summary generated and posted to forum." })
       
       // Reset
       setNote(""); setTicker(""); setUnderlying("")
@@ -149,14 +151,14 @@ export function PostTradeIdea() {
       <DialogTrigger asChild>
         <Button className="bg-primary hover:bg-primary/90 font-bold gap-2">
           <Plus className="w-4 h-4" />
-          Post Trade Idea
+          Share Idea
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl terminal-card bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-headline flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Issue New Research Note
+            Share Research Idea
           </DialogTitle>
         </DialogHeader>
 
@@ -281,7 +283,7 @@ export function PostTradeIdea() {
           )}
 
           <div className="space-y-2">
-            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Creator Notes / Rational</label>
+            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Research Notes / Rational</label>
             <Textarea 
               placeholder="Describe your reasoning, market conditions, and conviction levels..." 
               className="bg-secondary border-border min-h-[120px] focus:ring-primary"
@@ -316,7 +318,7 @@ export function PostTradeIdea() {
                 </>
               ) : (
                 <>
-                  Issue Research Note
+                  Share Research Note
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
