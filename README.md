@@ -29,7 +29,7 @@ AlphaLink v2 is a high-performance web application designed for private trading 
    Open [http://localhost:9002](http://localhost:9002)
 
 4. **First-Time Login (Admin)**
-   Use the bootstrap code: `ALPHA_ADMIN_2024`
+   Use the bootstrap code: `ALPHALINK_ADMIN_888`
 
 ## Features & Roles
 
@@ -103,7 +103,7 @@ service cloud.firestore {
 ```
 
 ## Manual Test Checklist
-1. [ ] Enter site using `ALPHA_ADMIN_2024`.
+1. [ ] Enter site using `ALPHALINK_ADMIN_888`.
 2. [ ] Navigate to **Invites** and generate a member code.
 3. [ ] Logout and login using that member code.
 4. [ ] Post a Stock trade idea as Admin; verify AI summary generates correctly.
