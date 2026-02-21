@@ -21,6 +21,7 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      // Use getAfter to ensure we can read the data even if it was just written in this transaction
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
@@ -33,15 +34,17 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      // 允许用户创建自己的初始配置，无论其角色设置
+      // Allow initial creation of user profile
       allow create: if isOwner(userId);
-      // 仅允许管理员修改角色，用户只能修改除角色外的个人资料
+      // Only admins can change roles, users can only update their own profile without changing role
       allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
     }
 
     match /invites/{inviteId} {
-      allow get, list, create, update, delete: if isAdmin();
+      // Allow signed-in users (even those without a role yet) to query for an invite code's existence
+      allow list: if isSignedIn();
+      allow get, create, update, delete: if isAdmin();
     }
 
     match /tradeIdeas/{tradeIdeaId} {

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,10 +7,10 @@ import { Input } from "@/components/ui/input"
 import { ShieldAlert, TrendingUp, Cpu, Lock, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useFirebase, useUser } from "@/firebase"
-import { signInAnonymously } from "firebase/auth"
+import { signInAnonymously, signOut } from "firebase/auth"
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore"
 
-// The new secure master code for administrator access
+// The secure master code for administrator access
 const ADMIN_BOOTSTRAP_CODE = 'ALPHALINK_ADMIN_888';
 
 export default function LandingPage() {
@@ -23,24 +22,29 @@ export default function LandingPage() {
   const { user, isUserLoading } = useUser()
 
   useEffect(() => {
-    if (user && !isUserLoading) {
-      router.push("/dashboard/feed")
-    }
+    // If the user already has a role defined in Firestore, they can go to the dashboard
+    // We don't redirect purely on auth existence because anonymous users might not have a profile yet
   }, [user, isUserLoading, router])
 
-  const handleLogin = async (e?: React.FormEvent, overrideCode?: string) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
+    if (isLoading) return
     setIsLoading(true)
 
-    const finalCode = (overrideCode || code).trim().toUpperCase()
+    const finalCode = code.trim().toUpperCase()
 
     try {
+      // Step 1: Sign in anonymously first to have a valid session for Firestore rules
+      const userCredential = await signInAnonymously(auth)
+      const userId = userCredential.user.uid
+
       let role: 'admin' | 'member' | null = null
 
+      // Step 2: Validate the code
       if (finalCode === ADMIN_BOOTSTRAP_CODE) {
         role = 'admin'
       } else {
-        // Check Firestore for valid invite code
+        // Check Firestore for valid active invite code
         const invitesRef = collection(firestore, "invites")
         const q = query(invitesRef, where("code", "==", finalCode), where("status", "==", "active"))
         const querySnapshot = await getDocs(q)
@@ -50,24 +54,28 @@ export default function LandingPage() {
         }
       }
 
+      // Step 3: If code is valid, finalize the user profile
       if (role) {
-        const userCredential = await signInAnonymously(auth)
-        const userId = userCredential.user.uid
-        
-        // Create/Update user profile in Firestore
         await setDoc(doc(firestore, "users", userId), {
           uid: userId,
           role: role,
           accessCode: finalCode,
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp()
         }, { merge: true })
 
         toast({
           title: "Access Granted",
-          description: `Welcome to the AlphaLink terminal as ${role}.`,
+          description: `Welcome to the AlphaLink terminal. Authenticated as ${role}.`,
         })
-        router.push("/dashboard/feed")
+        
+        // Wait a tiny bit for the session to stabilize before redirecting
+        setTimeout(() => {
+          router.push("/dashboard/feed")
+        }, 500)
       } else {
+        // Step 4: If invalid, sign out and show error
+        await signOut(auth)
         toast({
           title: "Access Denied",
           description: "Invalid or disabled access code. Please contact an admin.",
@@ -75,10 +83,13 @@ export default function LandingPage() {
         })
       }
     } catch (err: any) {
-      console.error(err)
+      console.error("Login Error:", err)
+      // Attempt cleanup if error occurred during process
+      if (auth.currentUser) await signOut(auth)
+      
       toast({
         title: "Connection Error",
-        description: "Could not connect to the authentication server.",
+        description: "Could not verify credentials. Ensure you have a stable network connection.",
         variant: "destructive"
       })
     } finally {
