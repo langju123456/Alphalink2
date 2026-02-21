@@ -7,7 +7,7 @@ import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from "@/
 import { collection, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Copy, Loader2, ShieldCheck, Tag, Trash2, Edit2, Check } from "lucide-react"
+import { Plus, Copy, Loader2, ShieldCheck, Trash2, Edit2, Check, User as UserIcon } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
 import {
@@ -28,10 +28,12 @@ export default function InvitesPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [newCode, setNewCode] = useState<string | null>(null)
   const [inviteLabel, setInviteLabel] = useState("")
+  const [recipient, setRecipient] = useState("")
   const [mounted, setMounted] = useState(false)
 
   const [editingInvite, setEditingInvite] = useState<any>(null)
   const [editLabelValue, setEditLabelValue] = useState("")
+  const [editRecipientValue, setEditRecipientValue] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
 
   const userDocRef = useMemoFirebase(() => {
@@ -78,6 +80,7 @@ export default function InvitesPage() {
         id: inviteId,
         code: code,
         label: inviteLabel.trim() || "General",
+        recipient: recipient.trim() || "Unknown",
         role: "member",
         status: "active",
         createdAt: serverTimestamp(),
@@ -86,9 +89,10 @@ export default function InvitesPage() {
       
       setNewCode(code)
       setInviteLabel("")
+      setRecipient("")
       toast({
         title: "Invite Generated",
-        description: `Code: ${code}`
+        description: `Code: ${code} for ${recipient || "Unknown"}`
       })
     } catch (err: any) {
       toast({
@@ -105,7 +109,7 @@ export default function InvitesPage() {
     if (!confirm(t.invites.confirmDelete)) return
     try {
       await deleteDoc(doc(firestore, "invites", id))
-      toast({ title: "Invite Deleted" })
+      toast({ title: t.common.success })
     } catch (err: any) {
       toast({ title: "Error deleting", variant: "destructive" })
     }
@@ -125,7 +129,8 @@ export default function InvitesPage() {
     setIsUpdating(true)
     try {
       await updateDoc(doc(firestore, "invites", editingInvite.id), {
-        label: editLabelValue.trim() || "General"
+        label: editLabelValue.trim() || "General",
+        recipient: editRecipientValue.trim() || "Unknown"
       })
       setEditingInvite(null)
       toast({ title: "Updated" })
@@ -151,10 +156,16 @@ export default function InvitesPage() {
 
         <div className="flex flex-col sm:flex-row items-stretch gap-3">
           <Input 
+            placeholder={t.invites.recipientPlaceholder}
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            className="h-11 bg-card border-border w-full sm:w-48"
+          />
+          <Input 
             placeholder={t.invites.labelPlaceholder}
             value={inviteLabel}
             onChange={(e) => setInviteLabel(e.target.value)}
-            className="h-11 bg-card border-border w-full sm:w-64"
+            className="h-11 bg-card border-border w-full sm:w-48"
           />
           <Button onClick={generateInvite} disabled={isGenerating} className="bg-primary font-bold h-11">
             {isGenerating ? <Loader2 className="animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
@@ -184,6 +195,7 @@ export default function InvitesPage() {
             <thead>
               <tr className="bg-secondary/50 border-b border-border">
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableCode}</th>
+                <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableRecipient}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableLabel}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest">{t.invites.tableStatus}</th>
                 <th className="p-4 uppercase text-[10px] text-muted-foreground font-bold tracking-widest text-right">{t.invites.tableActions}</th>
@@ -191,14 +203,26 @@ export default function InvitesPage() {
             </thead>
             <tbody>
               {isInvitesLoading ? (
-                <tr><td colSpan={4} className="p-10 text-center italic">Loading terminal data...</td></tr>
+                <tr><td colSpan={5} className="p-10 text-center italic">Loading terminal data...</td></tr>
               ) : invites?.map((inv: any) => (
                 <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
                   <td className="p-4 font-code font-bold text-foreground">{inv.code}</td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
+                      <UserIcon className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs font-semibold">{inv.recipient || "Unknown"}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
                       <span className="text-xs">{inv.label}</span>
-                      <button onClick={() => { setEditingInvite(inv); setEditLabelValue(inv.label); }} className="text-muted-foreground hover:text-primary"><Edit2 className="w-3 h-3" /></button>
+                      <button onClick={() => { 
+                        setEditingInvite(inv); 
+                        setEditLabelValue(inv.label); 
+                        setEditRecipientValue(inv.recipient || "");
+                      }} className="text-muted-foreground hover:text-primary transition-colors">
+                        <Edit2 className="w-3 h-3" />
+                      </button>
                     </div>
                   </td>
                   <td className="p-4">
@@ -224,10 +248,30 @@ export default function InvitesPage() {
       <Dialog open={!!editingInvite} onOpenChange={(open) => !open && setEditingInvite(null)}>
         <DialogContent className="bg-card">
           <DialogHeader><DialogTitle>{t.invites.editLabel}</DialogTitle></DialogHeader>
-          <div className="py-4"><Input value={editLabelValue} onChange={(e) => setEditLabelValue(e.target.value)} /></div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.invites.recipient}</label>
+              <Input 
+                value={editRecipientValue} 
+                onChange={(e) => setEditRecipientValue(e.target.value)} 
+                placeholder={t.invites.recipientPlaceholder}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.invites.label}</label>
+              <Input 
+                value={editLabelValue} 
+                onChange={(e) => setEditLabelValue(e.target.value)} 
+                placeholder={t.invites.labelPlaceholder}
+              />
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditingInvite(null)}>{t.common.cancel}</Button>
-            <Button onClick={saveEdit} disabled={isUpdating}>{isUpdating ? <Loader2 className="animate-spin" /> : <Check className="w-4 h-4 mr-2" />}{t.invites.saveChanges}</Button>
+            <Button onClick={saveEdit} disabled={isUpdating} className="bg-primary font-bold">
+              {isUpdating ? <Loader2 className="animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              {t.invites.saveChanges}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

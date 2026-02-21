@@ -55,6 +55,7 @@ export interface Invite {
   id: string;
   code: string;
   label?: string;
+  recipient?: string;
   role: Role;
   status: 'active' | 'disabled';
   createdAt: any;
