@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
@@ -34,11 +35,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     t: translations[language]
   }
 
-  // Prevent hydration flicker
-  if (!mounted) {
-    return <>{children}</>
-  }
-
+  // 关键修复：Provider 必须始终渲染，以便子组件在 SSR 阶段可以访问 context
+  // 使用 mounted 状态来处理客户端特有的逻辑（如从 localStorage 读取语言）
   return (
     <LanguageContext.Provider value={value}>
       {children}

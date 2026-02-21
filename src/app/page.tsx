@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -13,13 +14,15 @@ import {
   Mail, 
   MessageSquare,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  Languages
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useFirebase, useUser } from "@/firebase"
 import { signInAnonymously, signOut } from "firebase/auth"
 import { collection, query, where, getDocs, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"
 import { Role } from "@/lib/types"
+import { useLanguage } from "@/components/language-provider"
 import {
   Select,
   SelectContent,
@@ -31,6 +34,7 @@ import {
 const ADMIN_BOOTSTRAP_CODE = 'ALPHALINK_ADMIN_888';
 
 export default function LandingPage() {
+  const { language, setLanguage, t } = useLanguage()
   const [step, setStep] = useState<'login' | 'profile'>('login')
   const [code, setCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -46,7 +50,6 @@ export default function LandingPage() {
   const { auth, firestore } = useFirebase()
   const { user, isUserLoading } = useUser()
 
-  // Task D: Persistent Check for User Entity
   useEffect(() => {
     async function checkExistingProfile() {
       if (!isUserLoading && user && firestore) {
@@ -67,13 +70,11 @@ export default function LandingPage() {
     const finalCode = code.trim().toUpperCase()
 
     try {
-      // Step 1: Initialize temporary session to query firestore
       const userCredential = await signInAnonymously(auth)
       const userId = userCredential.user.uid
 
       let role: Role | null = null
 
-      // Step 2: Validate the code
       if (finalCode === ADMIN_BOOTSTRAP_CODE) {
         role = 'admin'
       } else {
@@ -87,7 +88,6 @@ export default function LandingPage() {
         }
       }
 
-      // Step 3: Handle authorization & Task C/D: User Entity Binding
       if (role) {
         setAssignedRole(role)
         
@@ -95,7 +95,6 @@ export default function LandingPage() {
         const userDoc = await getDoc(userDocRef)
 
         if (role === 'admin') {
-          // ADMIN BYPASS: Create profile automatically if missing
           if (!userDoc.exists() || !userDoc.data().displayName) {
             await setDoc(userDocRef, {
               uid: userId,
@@ -109,25 +108,22 @@ export default function LandingPage() {
             }, { merge: true })
           }
           
-          toast({ title: "Admin Access Granted", description: "Initializing secure terminal..." })
+          toast({ title: t.landing.toastAdminAccess, description: t.landing.toastInitializing })
           router.push("/dashboard/feed")
         } else if (userDoc.exists() && userDoc.data().displayName) {
-          // Existing registered member
-          toast({ title: "Access Granted", description: `Welcome back to the terminal.` })
+          toast({ title: t.landing.toastAccessGranted, description: t.landing.toastWelcomeBack })
           router.push("/dashboard/feed")
         } else {
-          // New member with valid code -> show registration (Task D)
           setStep('profile')
-          toast({ title: "Code Verified", description: "Please complete your member profile to continue." })
+          toast({ title: t.landing.toastCodeVerified, description: t.landing.toastCompleteProfile })
         }
       } else {
-        // Invalid code -> clear session
         await signOut(auth)
-        toast({ title: "Access Denied", description: "Invalid or disabled access code.", variant: "destructive" })
+        toast({ title: t.landing.toastDenied, description: t.landing.toastInvalidCode, variant: "destructive" })
       }
     } catch (err: any) {
       console.error("Login Error:", err)
-      toast({ title: "Connection Error", description: "Could not verify credentials.", variant: "destructive" })
+      toast({ title: t.landing.toastConnError, description: "Could not verify credentials.", variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -140,7 +136,6 @@ export default function LandingPage() {
 
     try {
       const userId = auth.currentUser.uid
-      // Task D: Save fullName + contact to users/{uid}
       await setDoc(doc(firestore, "users", userId), {
         uid: userId,
         role: assignedRole,
@@ -152,10 +147,10 @@ export default function LandingPage() {
         createdAt: serverTimestamp()
       }, { merge: true })
 
-      toast({ title: "Registration Complete", description: `Your profile has been created. Initializing session...` })
+      toast({ title: t.landing.toastRegComplete, description: "Your profile has been created." })
       router.push("/dashboard/feed")
     } catch (err) {
-      toast({ title: "Registration Error", description: "Could not finalize your profile.", variant: "destructive" })
+      toast({ title: t.landing.toastRegError, description: "Could not finalize your profile.", variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -170,14 +165,27 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background relative">
+      {/* Language Toggle in Top Right */}
+      <div className="absolute top-6 right-6">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+          className="border-border/60 hover:bg-secondary/50 font-bold gap-2"
+        >
+          <Languages className="w-4 h-4" />
+          {language === 'en' ? '中文' : 'English'}
+        </Button>
+      </div>
+
       <div className="max-w-md w-full space-y-8 text-center">
         <div className="space-y-2">
           <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
             <TrendingUp className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-4xl font-headline font-bold tracking-tight text-white">AlphaLink v2</h1>
-          <p className="text-muted-foreground uppercase text-[10px] tracking-[0.2em] font-bold">Private Community Terminal</p>
+          <h1 className="text-4xl font-headline font-bold tracking-tight text-white">{t.landing.title}</h1>
+          <p className="text-muted-foreground uppercase text-[10px] tracking-[0.2em] font-bold">{t.landing.subtitle}</p>
         </div>
 
         {step === 'login' ? (
@@ -185,8 +193,8 @@ export default function LandingPage() {
             <div className="flex gap-4 p-4 terminal-card bg-secondary/20">
               <Cpu className="w-5 h-5 text-primary shrink-0" />
               <div className="text-left">
-                <p className="font-semibold text-sm">Terminal Security</p>
-                <p className="text-xs text-muted-foreground">Encryption active. Input unique access key to initialize.</p>
+                <p className="font-semibold text-sm">{t.landing.securityTitle}</p>
+                <p className="text-xs text-muted-foreground">{t.landing.securityDesc}</p>
               </div>
             </div>
 
@@ -195,7 +203,7 @@ export default function LandingPage() {
                 <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <input
                   type="password"
-                  placeholder="Enter Terminal Access Code"
+                  placeholder={t.landing.placeholderCode}
                   className="w-full pl-10 h-12 bg-secondary border border-border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary uppercase font-code tracking-widest placeholder:text-muted-foreground/50"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
@@ -208,7 +216,7 @@ export default function LandingPage() {
                 disabled={isLoading}
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {isLoading ? "Validating..." : "Initialize Session"}
+                {isLoading ? t.landing.btnValidating : t.landing.btnInitialize}
               </Button>
             </form>
           </div>
@@ -217,16 +225,16 @@ export default function LandingPage() {
             <div className="p-6 terminal-card bg-secondary/10 border-primary/20">
               <div className="flex items-center gap-3 mb-6">
                 <ShieldCheck className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-bold text-white text-left">Registration Required</h2>
+                <h2 className="text-lg font-bold text-white text-left">{t.landing.regTitle}</h2>
               </div>
 
               <form onSubmit={handleCompleteProfile} className="space-y-5 text-left">
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Full Name</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.landing.labelFullName}</label>
                   <div className="relative">
                     <UserCircle className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="e.g. John Doe"
+                      placeholder={t.landing.placeholderName}
                       className="pl-10 bg-secondary"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
@@ -236,21 +244,21 @@ export default function LandingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Contact Method</label>
+                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t.landing.labelContactMethod}</label>
                   <Select value={contactType} onValueChange={(v: any) => setContactType(v)}>
                     <SelectTrigger className="bg-secondary">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="email">Official Email</SelectItem>
-                      <SelectItem value="other">Social Handle / Other</SelectItem>
+                      <SelectItem value="email">{t.landing.optionEmail}</SelectItem>
+                      <SelectItem value="other">{t.landing.optionOther}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
-                    {contactType === 'email' ? 'Email Address' : 'Contact Handle'}
+                    {contactType === 'email' ? t.landing.labelEmail : t.landing.labelHandle}
                   </label>
                   <div className="relative">
                     {contactType === 'email' ? (
@@ -259,7 +267,7 @@ export default function LandingPage() {
                       <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     )}
                     <Input
-                      placeholder={contactType === 'email' ? "email@example.com" : "@username or Discord ID"}
+                      placeholder={contactType === 'email' ? t.landing.placeholderEmail : t.landing.placeholderHandle}
                       className="pl-10 bg-secondary"
                       value={contactInfo}
                       onChange={(e) => setContactInfo(e.target.value)}
@@ -274,7 +282,7 @@ export default function LandingPage() {
                   disabled={isLoading}
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                  Register & Enter Terminal
+                  {t.landing.btnRegister}
                 </Button>
               </form>
             </div>
@@ -282,7 +290,7 @@ export default function LandingPage() {
         )}
 
         <p className="text-[10px] text-muted-foreground uppercase tracking-widest pt-12">
-          Secured Alpha Connection • Layer 7 Encryption
+          {t.landing.footer}
         </p>
       </div>
     </div>
